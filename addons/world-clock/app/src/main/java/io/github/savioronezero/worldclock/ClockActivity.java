@@ -191,12 +191,19 @@ public final class ClockActivity extends Activity {
         root.addView(help, helpParams);
         setContentView(root);
         for (View node : focusNodes) node.setId(View.generateViewId());
+        // With six clocks there is nothing to add: the button goes, and what led to it leads to its neighbour
+        boolean full = ids.size() >= ClockModel.LIMIT;
+        add.setVisibility(full ? View.GONE : View.VISIBLE);
+        int addId = add.getId(), instead = focusNodes.get(1).getId();
         for (int i = 0; i < focusNodes.size(); i++) {
             View node = focusNodes.get(i);
-            node.setNextFocusLeftId(target(i, ClockNavigation.LEFT));
-            node.setNextFocusRightId(target(i, ClockNavigation.RIGHT));
-            node.setNextFocusUpId(target(i, ClockNavigation.UP));
-            node.setNextFocusDownId(target(i, ClockNavigation.DOWN));
+            int[] to = {target(i, ClockNavigation.LEFT), target(i, ClockNavigation.RIGHT),
+                    target(i, ClockNavigation.UP), target(i, ClockNavigation.DOWN)};
+            if (full) for (int d = 0; d < to.length; d++) if (to[d] == addId) to[d] = instead;
+            node.setNextFocusLeftId(to[0]);
+            node.setNextFocusRightId(to[1]);
+            node.setNextFocusUpId(to[2]);
+            node.setNextFocusDownId(to[3]);
         }
         refresh();
         focusNodes.get(ClockNavigation.TOOLBAR + Math.max(0, Math.min(selected, ids.size() - 1))).requestFocus();
