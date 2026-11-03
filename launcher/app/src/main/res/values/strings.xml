@@ -114,6 +114,14 @@
     <!-- Live tiles (local patch, live_cards) -->
     <string name="live_cards_state">Live tiles: %1$s</string>
     <string name="live_cards_hint">Add-ons such as the weather put a short line on their tile while Home is open. Off saves memory: no add-on is started for Home.</string>
+    <!-- Two-pane launcher settings (local patch) -->
+    <string name="settings_home_title">Home screen</string>
+    <string name="settings_section_grid">Grid and dock</string>
+    <string name="settings_section_look">Look</string>
+    <string name="settings_section_system">Start and system</string>
+    <string name="settings_keys_hint">◀ ▶ change a value · OK opens or switches · Back returns to the sections</string>
+    <string name="animations_label">Animations</string>
+    <string name="live_cards_label">Live tiles</string>
     <!-- Screensaver (local patch) -->
     <string name="screensaver_state">Screensaver: %1$s</string>
     <string name="screensaver_delay_state">Screensaver after: %1$s</string>

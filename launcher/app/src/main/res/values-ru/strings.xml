@@ -110,6 +110,13 @@
     <string name="app_library">Библиотека приложений</string>
     <string name="live_cards_state">Живые плитки: %1$s</string>
     <string name="live_cards_hint">Аддоны вроде погоды показывают на своей плитке короткую строку, пока открыт главный экран. Выключено: память не тратится, ни один аддон ради главного экрана не запускается.</string>
+    <string name="settings_home_title">Главный экран</string>
+    <string name="settings_section_grid">Сетка и док</string>
+    <string name="settings_section_look">Внешний вид</string>
+    <string name="settings_section_system">Запуск и система</string>
+    <string name="settings_keys_hint">◀ ▶ меняют значение · OK открывает или переключает · Назад — к разделам</string>
+    <string name="animations_label">Анимация</string>
+    <string name="live_cards_label">Живые плитки</string>
     <string name="screensaver_state">Заставка: %1$s</string>
     <string name="screensaver_delay_state">Заставка через: %1$s</string>
     <string name="screensaver_title">Заставка</string>
