@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Full screen on a 1080p TV (960 x 540 dp): two cards with ring gauges, memory with its last minute, a button -->
+<!-- Full screen on a 1080p TV (960 x 540 dp): two cards with ring gauges and a button -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -39,8 +39,8 @@
             <TextView style="@style/CardTitle" android:text="@string/memory_title" />
 
             <FrameLayout
-                android:layout_width="150dp"
-                android:layout_height="150dp"
+                android:layout_width="170dp"
+                android:layout_height="170dp"
                 android:layout_marginTop="14dp">
 
                 <com.lionlev.tv.capacity.Gauge
@@ -62,17 +62,14 @@
 
             <TextView android:id="@+id/memoryDetail" style="@style/Detail" />
 
-            <com.lionlev.tv.capacity.Sparkline
-                android:id="@+id/memoryHistory"
+            <Space
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_marginTop="12dp"
-                android:layout_weight="1"
-                android:minHeight="40dp" />
+                android:layout_weight="1" />
 
             <TextView
                 style="@style/Caption"
-                android:text="@string/last_minute" />
+                android:text="@string/memory_note" />
         </LinearLayout>
 
         <!-- Storage -->
@@ -89,8 +86,8 @@
             <TextView style="@style/CardTitle" android:text="@string/storage_title" />
 
             <FrameLayout
-                android:layout_width="150dp"
-                android:layout_height="150dp"
+                android:layout_width="170dp"
+                android:layout_height="170dp"
                 android:layout_marginTop="14dp">
 
                 <com.lionlev.tv.capacity.Gauge

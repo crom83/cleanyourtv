@@ -19,6 +19,11 @@ final class Levels {
         return Math.min(1f, (float) free / total);
     }
 
+    /** A share as a whole percent, 0 to 100. */
+    static int percent(float share) {
+        return Math.round(Math.max(0f, Math.min(1f, share)) * 100);
+    }
+
     /** Gigabytes with one decimal, in the language's own decimal mark: "1,8" in Russian, "1.8" in English. */
     static String gb(long bytes, java.util.Locale locale) {
         return String.format(locale, "%.1f", bytes / (1024.0 * 1024 * 1024));

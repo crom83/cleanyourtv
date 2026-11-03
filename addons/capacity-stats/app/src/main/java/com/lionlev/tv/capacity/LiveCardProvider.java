@@ -14,7 +14,8 @@ import android.net.Uri;
 import java.io.ByteArrayOutputStream;
 
 /**
- * The line on this app's Clean Your TV tile (the launcher's LiveCards): free memory, with a small ring in the
+ * The line on this app's Clean Your TV tile (the launcher's LiveCards): free memory in percent (not everyone knows
+ * how much their TV has), with a small ring in the
  * colour of how much is left. Read from /proc/meminfo when the launcher asks, which it does only while Home is
  * on screen; no network and nothing kept.
  */
@@ -27,7 +28,7 @@ public class LiveCardProvider extends ContentProvider {
         StatsActivity.Reading r = StatsActivity.read(c);
         float share = Levels.share(r.memFreeMb, r.memTotalMb);
         if (share < 0) return out;
-        out.addRow(new Object[] {c.getString(R.string.live_line, r.memFreeMb), ring(share)});
+        out.addRow(new Object[] {c.getString(R.string.percent, Levels.percent(share)), ring(share)});
         return out;
     }
 

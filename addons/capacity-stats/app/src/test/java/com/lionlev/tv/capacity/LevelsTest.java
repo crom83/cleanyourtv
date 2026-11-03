@@ -34,15 +34,9 @@ public class LevelsTest {
     }
 
     @Test
-    public void historyScaleFollowsTheReadings() {
-        float[] flat = Sparkline.range(344, 344, 932);
-        assertEquals(314f, flat[0], 0.01);
-        assertEquals(374f, flat[1], 0.01);
-        float[] wide = Sparkline.range(200, 400, 932);
-        assertEquals(160f, wide[0], 0.01);
-        assertEquals(440f, wide[1], 0.01);
-        float[] low = Sparkline.range(10, 10, 932);
-        assertEquals(0f, low[0], 0.01);
-        assertEquals(60f, low[1], 0.01);
+    public void percentIsWholeAndClamped() {
+        assertEquals(37, Levels.percent(0.369f));
+        assertEquals(0, Levels.percent(-0.2f));
+        assertEquals(100, Levels.percent(1.5f));
     }
 }

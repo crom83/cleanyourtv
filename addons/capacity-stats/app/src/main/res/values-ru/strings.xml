@@ -2,15 +2,13 @@
     <string name="title">Память и хранилище</string>
     <string name="memory_title">Оперативная память</string>
     <string name="storage_title">Хранилище</string>
-    <string name="unit_mb_free">МБ свободно</string>
-    <string name="unit_gb_free">ГБ свободно</string>
-    <string name="memory_detail">из %1$d МБ · занято %2$d МБ</string>
-    <string name="storage_detail">из %1$s ГБ · занято %2$s ГБ</string>
-    <string name="last_minute">Свободная память за последнюю минуту</string>
     <string name="storage_note">Приложения, их данные и ваши файлы</string>
     <string name="clean">Освободить память</string>
     <string name="cleaning">Освобождаю память…</string>
     <string name="cleaned">Освобождено %1$d МБ · теперь свободно %2$d МБ</string>
     <string name="cleaned_none">Больше освобождать нечего · свободно %1$d МБ</string>
-    <string name="live_line">%1$d МБ</string>
+    <string name="free">свободно</string>
+    <string name="memory_detail">%1$d из %2$d МБ</string>
+    <string name="storage_detail">%1$s из %2$s ГБ</string>
+    <string name="memory_note">Вместе с кешем, который Android освобождает сам</string>
 </resources>

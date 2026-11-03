@@ -4,14 +4,13 @@
     <string name="title">זיכרון ואחסון</string>
     <string name="memory_title">זיכרון</string>
     <string name="storage_title">אחסון</string>
-    <string name="unit_mb_free">MB פנויים</string>
-    <string name="unit_gb_free">GB פנויים</string>
-    <string name="memory_detail">מתוך %1$d MB · %2$d MB בשימוש</string>
-    <string name="storage_detail">מתוך %1$s GB · %2$s GB בשימוש</string>
-    <string name="last_minute">זיכרון פנוי בדקה האחרונה</string>
     <string name="storage_note">אפליקציות, הנתונים שלהן והקבצים שלך</string>
     <string name="clean">פינוי זיכרון</string>
     <string name="cleaning">מפנה זיכרון…</string>
     <string name="cleaned">פונו %1$d MB · כעת %2$d MB פנויים</string>
     <string name="cleaned_none">אין עוד מה לפנות · %1$d MB פנויים</string>
+    <string name="free">פנוי</string>
+    <string name="memory_detail">%1$d מתוך %2$d MB</string>
+    <string name="storage_detail">%1$s מתוך %2$s GB</string>
+    <string name="memory_note">כולל מטמון ש-Android מפנה בעצמו</string>
 </resources>

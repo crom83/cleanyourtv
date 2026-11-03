@@ -4,14 +4,13 @@
     <string name="title">Memoria e spazio</string>
     <string name="memory_title">Memoria</string>
     <string name="storage_title">Spazio</string>
-    <string name="unit_mb_free">MB liberi</string>
-    <string name="unit_gb_free">GB liberi</string>
-    <string name="memory_detail">su %1$d MB · %2$d MB in uso</string>
-    <string name="storage_detail">su %1$s GB · %2$s GB in uso</string>
-    <string name="last_minute">Memoria libera nell\'ultimo minuto</string>
     <string name="storage_note">App, i loro dati e i tuoi file</string>
     <string name="clean">Libera memoria</string>
     <string name="cleaning">Libero la memoria…</string>
     <string name="cleaned">Liberati %1$d MB · ora %2$d MB liberi</string>
     <string name="cleaned_none">Niente altro da liberare · %1$d MB liberi</string>
+    <string name="free">liberi</string>
+    <string name="memory_detail">%1$d su %2$d MB</string>
+    <string name="storage_detail">%1$s su %2$s GB</string>
+    <string name="memory_note">Comprese le cache che Android libera da solo</string>
 </resources>

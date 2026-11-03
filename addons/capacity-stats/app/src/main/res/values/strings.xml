@@ -3,18 +3,15 @@
     <string name="title">Memory and storage</string>
     <string name="memory_title">Memory</string>
     <string name="storage_title">Storage</string>
-    <string name="unit_mb_free">MB free</string>
-    <string name="unit_gb_free">GB free</string>
-    <!-- "of 932 MB · 581 MB in use" -->
-    <string name="memory_detail">of %1$d MB · %2$d MB in use</string>
-    <string name="storage_detail">of %1$s GB · %2$s GB in use</string>
-    <string name="last_minute">Free memory over the last minute</string>
     <string name="storage_note">Apps, their data and your files</string>
     <string name="clean">Free up memory</string>
     <string name="cleaning">Freeing up memory…</string>
     <string name="cleaned">Freed %1$d MB · now %2$d MB free</string>
     <string name="cleaned_none">Nothing more to free · %1$d MB free</string>
-    <!-- The launcher tile's line (live card): free memory -->
-    <string name="live_line">%1$d MB</string>
     <string name="unavailable">—</string>
+    <string name="free">free</string>
+    <string name="percent">%1$d%%</string>
+    <string name="memory_detail">%1$d of %2$d MB</string>
+    <string name="storage_detail">%1$s of %2$s GB</string>
+    <string name="memory_note">Includes caches Android frees by itself</string>
 </resources>

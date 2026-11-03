@@ -22,15 +22,14 @@ import java.util.Set;
 
 /**
  * Memory and storage as two ring gauges, read every {@link #SAMPLE_MS} while the screen is open (nothing runs in the
- * background), with free memory over the last minute and a button that unloads other apps' background processes.
+ * background), and a button that unloads other apps' background processes.
  */
 public final class StatsActivity extends Activity {
-    static final long SAMPLE_MS = 2000;
+    static final long SAMPLE_MS = 10_000;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private HandlerThread worker;
     private volatile Handler background;
     private Gauge memoryGauge, storageGauge;
-    private Sparkline history;
     private TextView memoryFree, memoryUnit, memoryDetail, storageFree, storageUnit, storageDetail, cleanResult;
     private boolean cleaning;
 
@@ -40,7 +39,6 @@ public final class StatsActivity extends Activity {
         setContentView(R.layout.activity_stats);
         memoryGauge = findViewById(R.id.memoryGauge);
         storageGauge = findViewById(R.id.storageGauge);
-        history = findViewById(R.id.memoryHistory);
         memoryFree = findViewById(R.id.memoryFree);
         memoryUnit = findViewById(R.id.memoryUnit);
         memoryDetail = findViewById(R.id.memoryDetail);
@@ -113,23 +111,22 @@ public final class StatsActivity extends Activity {
         float mem = Levels.share(r.memFreeMb, r.memTotalMb);
         if (mem >= 0) {
             memoryGauge.setShare(mem);
-            memoryFree.setText(String.valueOf(r.memFreeMb));
-            memoryDetail.setText(getString(R.string.memory_detail, r.memTotalMb, r.memTotalMb - r.memFreeMb));
-            history.add(r.memFreeMb, r.memTotalMb, Levels.colour(mem));
+            memoryFree.setText(getString(R.string.percent, Levels.percent(mem)));
+            memoryDetail.setText(getString(R.string.memory_detail, r.memFreeMb, r.memTotalMb));
         } else {
             memoryFree.setText(R.string.unavailable);
         }
-        memoryUnit.setText(R.string.unit_mb_free);
+        memoryUnit.setText(R.string.free);
         float disk = Levels.share(r.diskFree, r.diskTotal);
         if (disk >= 0) {
             storageGauge.setShare(disk);
-            storageFree.setText(Levels.gb(r.diskFree, locale));
-            storageDetail.setText(getString(R.string.storage_detail, Levels.gb(r.diskTotal, locale),
-                    Levels.gb(r.diskTotal - r.diskFree, locale)));
+            storageFree.setText(getString(R.string.percent, Levels.percent(disk)));
+            storageDetail.setText(getString(R.string.storage_detail, Levels.gb(r.diskFree, locale),
+                    Levels.gb(r.diskTotal, locale)));
         } else {
             storageFree.setText(R.string.unavailable);
         }
-        storageUnit.setText(R.string.unit_gb_free);
+        storageUnit.setText(R.string.free);
     }
 
     /**
@@ -162,6 +159,7 @@ public final class StatsActivity extends Activity {
                 long freed = Math.max(0, after - before);   // a few MB is noise, not something freed
                 cleanResult.setText(freed >= 5 ? getString(R.string.cleaned, freed, after)
                         : getString(R.string.cleaned_none, after));
+                show(read(this));   // the new numbers at once, not at the next reading
             });
         }, "clean").start();
     }
