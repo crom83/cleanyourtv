@@ -25,4 +25,11 @@ public class LiveCardsTest {
         assertFalse(LiveCards.checkText("💡5"));
         assertFalse(LiveCards.checkText("<b>5</b>"));
     }
+
+    @Test
+    public void rereadLandsJustAfterTheMinuteTurns() {
+        org.junit.Assert.assertEquals(60_300, LiveCards.delayToNextMinute(120_000));
+        org.junit.Assert.assertEquals(301, LiveCards.delayToNextMinute(179_999));   // one ms before the turn
+        org.junit.Assert.assertEquals(15_300, LiveCards.delayToNextMinute(45_000));
+    }
 }

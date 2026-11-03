@@ -25,7 +25,7 @@ import java.util.function.Consumer;
  * Live module cards: a card the owner chose to show may also publish a short line for its tile, such as "12°" with a
  * cloud or "5" with a bulb. The app names its own provider in a {@value #META} meta-data; the launcher reads
  * content://authority/card (columns "text" and "icon", a small PNG) only while Home is on screen, watches it for
- * changes (and asks again every minute while Home stays up), and draws the result over the tile. The launcher stays offline: fetching is the add-on's business.
+ * changes (and asks again as each minute turns while Home stays up), and draws the result over the tile. The launcher stays offline: fetching is the add-on's business.
  */
 final class LiveCards {
     static final String META = "com.gathin.tvhome.live";
@@ -33,8 +33,13 @@ final class LiveCards {
     static final int MAX_ICON_BYTES = 32 * 1024;
     static final int MAX_ICON_PX = 128;
     private static final String[] COLUMNS = {"text", "icon"};
-    /** While Home stays on screen, ask again this often; the add-on decides whether that needs the network. */
-    static final long REREAD_MS = 60_000;
+    /**
+     * While Home stays on screen, ask again every minute, just after the minute turns, so a clock on a tile is never
+     * a minute behind; the add-on decides whether an answer needs the network.
+     */
+    static long delayToNextMinute(long nowMs) {
+        return 60_000 - Math.floorMod(nowMs, 60_000L) + 300;
+    }
 
     /** What a tile shows: text and an optional icon. */
     static final class Live {
@@ -60,7 +65,7 @@ final class LiveCards {
         @Override
         public void run() {
             for (Map.Entry<String, Uri> s : sources.entrySet()) read(s.getKey(), s.getValue());
-            if (started) main.postDelayed(this, REREAD_MS);
+            if (started) main.postDelayed(this, delayToNextMinute(System.currentTimeMillis()));
         }
     };
 
@@ -121,7 +126,7 @@ final class LiveCards {
             read(pkg, uri);
         }
         main.removeCallbacks(reread);
-        if (!sources.isEmpty()) main.postDelayed(reread, REREAD_MS);
+        if (!sources.isEmpty()) main.postDelayed(reread, delayToNextMinute(System.currentTimeMillis()));
     }
 
     /** Home is off screen: nothing is read until it is back. */

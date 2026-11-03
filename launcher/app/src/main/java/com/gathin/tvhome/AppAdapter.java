@@ -21,6 +21,7 @@ import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
@@ -467,14 +468,22 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             label.setPadding(label.getPaddingLeft(), label.getPaddingTop(), label.getPaddingRight(), Math.round(4f * density));
         }
         // The live line keeps to the tile's corner at any size: full size on a dock tile, smaller on a grid tile.
-        View live = v.findViewById(R.id.live);
+        // Sized, not scaled, so a smaller line is also measured smaller and a longer text still fits the tile.
         float liveScale = Math.max(0.6f, Math.min(1f, w / (DESIGN_W_DP * density * 1.2f)));
-        live.setScaleX(liveScale);
-        live.setScaleY(liveScale);
-        live.addOnLayoutChangeListener((view, l, t, r, b, ol, ot, or, ob) -> {
-            view.setPivotX(r - l);
-            view.setPivotY(b - t);
-        });
+        if (liveScale < 1f) {
+            View live = v.findViewById(R.id.live);
+            live.setPadding(Math.round(live.getPaddingLeft() * liveScale), Math.round(live.getPaddingTop() * liveScale),
+                    Math.round(live.getPaddingRight() * liveScale), Math.round(live.getPaddingBottom() * liveScale));
+            ViewGroup.MarginLayoutParams liveLp = (ViewGroup.MarginLayoutParams) live.getLayoutParams();
+            int margin = Math.round(liveLp.rightMargin * liveScale);
+            liveLp.setMargins(margin, margin, margin, margin);
+            View liveIcon = v.findViewById(R.id.liveIcon);
+            ViewGroup.MarginLayoutParams iconLp = (ViewGroup.MarginLayoutParams) liveIcon.getLayoutParams();
+            iconLp.width = iconLp.height = Math.round(iconLp.width * liveScale);
+            iconLp.setMarginEnd(Math.round(iconLp.getMarginEnd() * liveScale));
+            TextView liveText = v.findViewById(R.id.liveText);
+            liveText.setTextSize(TypedValue.COMPLEX_UNIT_PX, liveText.getTextSize() * liveScale);
+        }
         return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot);
     }
 
