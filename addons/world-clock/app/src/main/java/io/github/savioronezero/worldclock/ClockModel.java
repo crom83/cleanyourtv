@@ -21,8 +21,64 @@ final class ClockModel {
     static final List<String> DEFAULTS = Collections.unmodifiableList(
             Arrays.asList(LOCAL, "Europe/London", "Australia/Sydney"));
 
+    /**
+     * Cities without a time zone of their own (Beijing keeps Shanghai's time): zone, English and Russian name,
+     * latitude and longitude. A clock for one is saved as "Asia/Shanghai#Beijing".
+     */
+    static final String[][] ALIASES = {
+            {"Asia/Shanghai", "Beijing", "Пекин", "39.9", "116.4"},
+            {"Asia/Shanghai", "Guangzhou", "Гуанчжоу", "23.1", "113.3"},
+            {"Asia/Shanghai", "Shenzhen", "Шэньчжэнь", "22.5", "114.1"},
+            {"Asia/Kolkata", "New Delhi", "Нью-Дели", "28.6", "77.2"},
+            {"Asia/Kolkata", "Mumbai", "Мумбаи", "19.1", "72.9"},
+            {"Asia/Kolkata", "Bengaluru", "Бангалор", "13.0", "77.6"},
+            {"America/New_York", "Washington", "Вашингтон", "38.9", "-77.0"},
+            {"America/New_York", "Boston", "Бостон", "42.4", "-71.1"},
+            {"America/New_York", "Miami", "Майами", "25.8", "-80.2"},
+            {"America/Chicago", "Houston", "Хьюстон", "29.8", "-95.4"},
+            {"America/Los_Angeles", "San Francisco", "Сан-Франциско", "37.8", "-122.4"},
+            {"America/Los_Angeles", "Seattle", "Сиэтл", "47.6", "-122.3"},
+            {"America/Los_Angeles", "Las Vegas", "Лас-Вегас", "36.2", "-115.1"},
+            {"America/Toronto", "Ottawa", "Оттава", "45.4", "-75.7"},
+            {"America/Toronto", "Montreal", "Монреаль", "45.5", "-73.6"},
+            {"Australia/Sydney", "Canberra", "Канберра", "-35.3", "149.1"},
+            {"America/Sao_Paulo", "Brasilia", "Бразилиа", "-15.8", "-47.9"},
+            {"America/Sao_Paulo", "Rio de Janeiro", "Рио-де-Жанейро", "-22.9", "-43.2"},
+            {"Europe/Istanbul", "Ankara", "Анкара", "39.9", "32.9"},
+            {"Asia/Dubai", "Abu Dhabi", "Абу-Даби", "24.5", "54.4"},
+            {"Asia/Karachi", "Islamabad", "Исламабад", "33.7", "73.1"},
+            {"Pacific/Auckland", "Wellington", "Веллингтон", "-41.3", "174.8"},
+            {"Asia/Ho_Chi_Minh", "Hanoi", "Ханой", "21.0", "105.8"},
+            {"Europe/Zurich", "Bern", "Берн", "46.9", "7.4"},
+            {"Europe/Zurich", "Geneva", "Женева", "46.2", "6.1"},
+            {"Europe/Moscow", "Saint Petersburg", "Санкт-Петербург", "59.9", "30.3"},
+            {"Europe/Berlin", "Munich", "Мюнхен", "48.1", "11.6"},
+            {"Europe/Madrid", "Barcelona", "Барселона", "41.4", "2.2"},
+            {"Europe/Rome", "Milan", "Милан", "45.5", "9.2"},
+            {"Asia/Tokyo", "Osaka", "Осака", "34.7", "135.5"},
+            {"Asia/Tokyo", "Kyoto", "Киото", "35.0", "135.8"},
+            {"Asia/Riyadh", "Mecca", "Мекка", "21.4", "39.8"},
+            {"Asia/Jerusalem", "Tel Aviv", "Тель-Авив", "32.1", "34.8"}
+    };
+
+    /** The time zone behind a clock id: the id itself, or the zone part of "Zone#City". */
+    static String zone(String id) {
+        int hash = id == null ? -1 : id.indexOf('#');
+        return hash < 0 ? id : id.substring(0, hash);
+    }
+
+    /** The alias row for "Zone#City", or null. */
+    static String[] alias(String id) {
+        int hash = id == null ? -1 : id.indexOf('#');
+        if (hash < 0) return null;
+        String zone = id.substring(0, hash), name = id.substring(hash + 1);
+        for (String[] a : ALIASES) if (a[0].equals(zone) && a[1].equals(name)) return a;
+        return null;
+    }
+
     static boolean valid(String id) {
         if (LOCAL.equals(id)) return true;
+        if (id != null && id.indexOf('#') >= 0) return alias(id) != null && valid(zone(id));
         if (id == null || id.length() > 100) return false;
         // Only platform-named zones: malformed IDs cannot silently become GMT as with TimeZone.getTimeZone.
         return "UTC".equals(id) || ZoneId.getAvailableZoneIds().contains(id);
@@ -67,12 +123,15 @@ final class ClockModel {
 
     static String city(String id) {
         if (LOCAL.equals(id)) return "Local";
+        String[] alias = alias(id);
+        if (alias != null) return alias[1];
         String name = id.substring(id.lastIndexOf('/') + 1).replace('_', ' ');
         // Older Android/ICU catalogues use the legacy spelling; keep the familiar city searchable.
         return "Katmandu".equals(name) ? "Kathmandu" : name;
     }
 
     static String area(String id) {
+        id = zone(id);
         int slash = id.lastIndexOf('/');
         return slash < 0 ? id : id.substring(0, slash).replace('_', ' ').replace('/', ' ');
     }
@@ -94,7 +153,9 @@ final class ClockModel {
         List<String> matches = new ArrayList<>();
         for (String id : catalogue) {
             if (existing.contains(id) && (replacing < 0 || !id.equals(existing.get(replacing)))) continue;
-            String text = normalized(city(id) + " " + id.replace('/', ' ') + " " + names.apply(id));
+            String[] alias = alias(id);
+            String text = normalized(city(id) + " " + (alias != null ? alias[2] : id.replace('/', ' ').replace('#', ' '))
+                    + " " + names.apply(id));
             boolean match = true;
             for (String term : terms) if (!text.contains(term)
                     && !text.replace(" ", "").contains(term)) { match = false; break; }
@@ -113,6 +174,7 @@ final class ClockModel {
                     && !id.startsWith("US/") && !id.startsWith("Canada/")
                     && !id.startsWith("Brazil/") && !id.startsWith("Mexico/")) found.add(id);
         }
+        for (String[] a : ALIASES) if (available.contains(a[0])) found.add(a[0] + "#" + a[1]);
         List<String> result = new ArrayList<>(found);
         result.sort((a, b) -> {
             if (a.equals(LOCAL)) return b.equals(LOCAL) ? 0 : -1;
@@ -147,7 +209,7 @@ final class ClockModel {
     }
 
     static Reading at(String id, Instant instant, ZoneId local, boolean twentyFour, Locale locale) {
-        ZonedDateTime time = instant.atZone(LOCAL.equals(id) ? local : ZoneId.of(id));
+        ZonedDateTime time = instant.atZone(LOCAL.equals(id) ? local : ZoneId.of(zone(id)));
         String offset = time.getOffset().getId();
         return new Reading(time.format(DateTimeFormatter.ofPattern(twentyFour ? "HH:mm" : "h:mm", locale)),
                 twentyFour ? "" : time.format(DateTimeFormatter.ofPattern("a", locale)),

@@ -73,14 +73,16 @@ final class WorldMap {
         outline.close();
         Map<String, double[]> places = places(context);
         for (String id : ids) {
-            String zone = ClockModel.LOCAL.equals(id) ? ZoneId.systemDefault().getId() : id;
+            String zone = ClockModel.LOCAL.equals(id) ? ZoneId.systemDefault().getId() : ClockModel.zone(id);
             try {
                 String region = android.icu.util.TimeZone.getRegion(zone);
                 if (region != null && region.length() == 2) lit.add(region);
             } catch (RuntimeException ignored) {
                 // UTC and the like belong to no country
             }
-            double[] at = places.get(zone);
+            String[] alias = ClockModel.alias(id);
+            double[] at = alias != null ? new double[] {Double.parseDouble(alias[3]), Double.parseDouble(alias[4])}
+                    : places.get(zone);
             if (at != null) {
                 float[] xy = new float[2];
                 MapMath.project(at[1], at[0], xy);

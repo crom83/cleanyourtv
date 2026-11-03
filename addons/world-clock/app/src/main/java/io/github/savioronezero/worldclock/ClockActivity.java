@@ -329,10 +329,15 @@ public final class ClockActivity extends Activity {
         list.setAdapter(adapter);
         Runnable filter = () -> {
             matches.clear();
-            matches.addAll(ClockModel.search(catalogue, search.getText().toString(), ids, replacing, this::cityLabel));
+            matches.addAll(ClockModel.search(catalogue, search.getText().toString(), ids, replacing,
+                    id -> cityLabel(id) + " " + TimeZoneNamesCache.country(id)));
             adapter.setNotifyOnChange(false);
             adapter.clear();
-            for (String id : matches) adapter.add(cityLabel(id) + "  ·  " + ClockModel.area(id));
+            for (String id : matches) {
+                // "Пекин · Китай": the country where the system knows it, else the zone's area
+                String where = TimeZoneNamesCache.countryName(id, Locale.getDefault());
+                adapter.add(cityLabel(id) + "  ·  " + (where.isEmpty() ? ClockModel.area(id) : where));
+            }
             adapter.notifyDataSetChanged();
             if (!matches.isEmpty()) list.setSelection(0);
         };

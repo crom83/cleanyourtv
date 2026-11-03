@@ -23,10 +23,32 @@ final class TimeZoneNamesCache {
     static synchronized String label(android.content.Context c, String id) {
         Locale locale = Locale.getDefault();
         if (shared == null || !shared.locale.equals(locale)) shared = new TimeZoneNamesCache(locale);
+        String[] alias = ClockModel.alias(id);
+        if (alias != null) return "ru".equals(locale.getLanguage()) ? alias[2] : alias[1];
         String zone = ClockModel.LOCAL.equals(id) ? java.time.ZoneId.systemDefault().getId() : id;
         String name = shared.city(zone);
         if (name != null) return name;
         return ClockModel.LOCAL.equals(id) ? c.getString(R.string.local) : ClockModel.city(id);
+    }
+
+    /**
+     * What a search for this clock may match beyond its city: the country in the TV's language ("Китай" finds
+     * every zone in China).
+     */
+    static String country(String id) {
+        String here = countryName(id, Locale.getDefault());
+        return here.isEmpty() ? "" : here + " " + countryName(id, Locale.ENGLISH);
+    }
+
+    /** The zone's country in a language ("Китай"), or empty for UTC and the like. */
+    static String countryName(String id, Locale locale) {
+        try {
+            String region = android.icu.util.TimeZone.getRegion(ClockModel.zone(id));
+            if (region == null || region.length() != 2 || "001".equals(region)) return "";
+            return new Locale("", region).getDisplayCountry(locale);
+        } catch (RuntimeException e) {
+            return "";
+        }
     }
 
     /** Null when the system has no city for the zone (UTC, for one). */
