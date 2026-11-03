@@ -30,5 +30,19 @@
             </intent-filter>
             <meta-data android:name="com.gathin.tvhome.card" android:resource="@xml/module_card" />
         </activity>
+
+        <!-- Clean Your TV live card: the launcher reads the temperature in the first city from this provider, only
+             while Home is on screen. -->
+        <meta-data android:name="com.gathin.tvhome.live" android:value="${applicationId}.card" />
+        <provider
+            android:name=".LiveCardProvider"
+            android:authorities="${applicationId}.card"
+            android:exported="true" />
+
+        <!-- One forecast day with its hours, opened with OK on a day card -->
+        <activity
+            android:name=".DayActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
     </application>
 </manifest>

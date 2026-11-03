@@ -2,6 +2,7 @@
 <resources>
     <string name="weather_settings">Hava durumu ayarları</string>
     <string name="settings_done">Bitti</string>
+    <string name="setting_city">Şehir</string>
     <string name="setting_units">Sıcaklık birimi</string>
     <string name="unit_c">Santigrat (°C)</string>
     <string name="unit_f">Fahrenhayt (°F)</string>

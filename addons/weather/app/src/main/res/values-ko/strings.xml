@@ -2,6 +2,7 @@
 <resources>
     <string name="weather_settings">날씨 설정</string>
     <string name="settings_done">완료</string>
+    <string name="setting_city">도시</string>
     <string name="setting_units">온도 단위</string>
     <string name="unit_c">섭씨 (°C)</string>
     <string name="unit_f">화씨 (°F)</string>

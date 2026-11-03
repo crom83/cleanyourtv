@@ -48,4 +48,22 @@
     <string name="sky_showers">Chubascos</string>
     <string name="sky_snow_showers">Chubascos de nieve</string>
     <string name="sky_thunderstorm">Tormenta</string>
+    <string name="setting_city">Ciudad</string>
+    <string name="weather_settings">Ajustes del tiempo</string>
+    <string name="settings_done">Listo</string>
+    <string name="setting_units">Unidades de temperatura</string>
+    <string name="unit_c">Celsius (°C)</string>
+    <string name="unit_f">Fahrenheit (°F)</string>
+    <string name="setting_both_units">Mostrar ambas unidades</string>
+    <string name="setting_days">Duración del pronóstico</string>
+    <string name="setting_humidity">Mostrar humedad</string>
+    <string name="setting_wind">Mostrar viento</string>
+    <string name="setting_reset">Restablecer ajustes del tiempo</string>
+    <string name="setting_value">%1$s · %2$s</string>
+    <string name="option_on">Sí</string>
+    <string name="option_off">No</string>
+    <plurals name="day_count">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
 </resources>

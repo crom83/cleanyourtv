@@ -6,13 +6,19 @@
     android:layout_height="match_parent"
     android:background="#FF0C0F14">
 
+    <!-- Animated weather over the gradient: rain, snow, clouds, stars, sun glow, fog, lightning -->
+    <io.github.sumyabazar1.weather.WeatherBackdrop
+        android:id="@+id/backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <LinearLayout
         android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingStart="64dp"
-        android:paddingTop="48dp"
+        android:paddingTop="28dp"
         android:paddingEnd="64dp"
         android:visibility="invisible">
 
@@ -32,6 +38,12 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <io.github.sumyabazar1.weather.WeatherIcon
+                android:id="@+id/skyIcon"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_marginEnd="20dp" />
 
             <TextView
                 android:id="@+id/temp"
@@ -54,36 +66,46 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="30sp" />
+                    android:textSize="26sp" />
 
                 <TextView
                     android:id="@+id/feels"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:textColor="#B3FFFFFF"
-                    android:textSize="18sp" />
+                    android:textSize="16sp" />
+
+                <!-- Air quality under "Feels like", in the same column -->
+                <TextView
+                    android:id="@+id/airQuality"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/airQuality"
+        <!-- Hour strip: the next 24 hours every 3 hours, or the day picked below; its date is in the top line -->
+        <LinearLayout
+            android:id="@+id/hours"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:fontFamily="sans-serif-medium"
-            android:paddingStart="14dp"
-            android:paddingTop="6dp"
-            android:paddingEnd="14dp"
-            android:paddingBottom="6dp"
-            android:textSize="15sp"
-            android:visibility="gone" />
+            android:layout_marginTop="26dp"
+            android:orientation="horizontal" />
 
         <LinearLayout
             android:id="@+id/days"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="36dp"
+            android:layout_marginTop="30dp"
+            android:clipChildren="false"
             android:orientation="horizontal" />
     </LinearLayout>
 
@@ -98,59 +120,53 @@
         android:textColor="#CCFFFFFF"
         android:textSize="20sp" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- With two or more cities: chevrons at the screen's sides, Left/Right and CH+/CH- step between them -->
+    <ImageView
+        android:id="@+id/cityPrev"
+        android:layout_width="24dp"
+        android:layout_height="48dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="20dp"
+        android:alpha="0.55"
+        android:importantForAccessibility="no"
+        android:scaleX="-1"
+        android:src="@drawable/ic_chevron"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/cityNext"
+        android:layout_width="24dp"
+        android:layout_height="48dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="20dp"
+        android:alpha="0.55"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_chevron"
+        android:visibility="gone" />
+
+    <!-- Settings (city, units, forecast length...) behind a small gear, top right -->
+    <ImageView
+        android:id="@+id/weatherSettings"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="36dp"
+        android:layout_marginEnd="56dp"
+        android:background="@drawable/pill"
+        android:contentDescription="@string/weather_settings"
+        android:focusable="true"
+        android:padding="13dp"
+        android:src="@drawable/ic_settings"
+        android:tint="@color/pill_text" />
+
+    <!-- When it was updated and where the data comes from, bottom right -->
+    <TextView
+        android:id="@+id/updated"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="64dp"
-        android:paddingEnd="64dp"
-        android:paddingBottom="40dp">
-
-        <TextView
-            android:id="@+id/changeCity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/pill"
-            android:minHeight="48dp"
-            android:gravity="center"
-            android:focusable="true"
-            android:nextFocusRight="@id/weatherSettings"
-            android:fontFamily="sans-serif-medium"
-            android:paddingStart="20dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="10dp"
-            android:text="@string/change_city"
-            android:textColor="@color/pill_text"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/weatherSettings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:minHeight="48dp"
-            android:gravity="center"
-            android:background="@drawable/pill"
-            android:focusable="true"
-            android:nextFocusLeft="@id/changeCity"
-            android:fontFamily="sans-serif-medium"
-            android:paddingStart="20dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="10dp"
-            android:text="@string/weather_settings"
-            android:textColor="@color/pill_text"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/updated"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:textColor="#80FFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="56dp"
+        android:layout_marginBottom="14dp"
+        android:textColor="#80FFFFFF"
+        android:textSize="14sp" />
 </FrameLayout>
