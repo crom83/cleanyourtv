@@ -372,6 +372,15 @@
                     android:drawableStart="@drawable/ic_apps_pill"
                     android:nextFocusDown="@+id/grid" />
 
+                <!-- Выгрузить фоновые приложения (локальная доработка, clean_button). -->
+                <TextView
+                    android:id="@+id/btnClean"
+                    style="@style/TopButtonIcon"
+                    android:visibility="gone"
+                    android:contentDescription="Выгрузить фоновые приложения"
+                    android:drawableStart="@drawable/ic_clean"
+                    android:nextFocusDown="@+id/grid" />
+
                 <TextView
                     android:id="@+id/btnSettings"
                     style="@style/TopButton"

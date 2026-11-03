@@ -17,6 +17,14 @@ android {
         versionName '3.3'
     }
 
+    // Локально: по варианту на телевизор. Общий код в src/main, отличия (док, Live TV, кнопки) в
+    // src/<вариант>/res/values/config_tv.xml. Сборка: ../../../build-launcher.sh <вариант>
+    flavorDimensions = ['tv']
+    productFlavors {
+        beyondtv { dimension 'tv' }   // TCL BeyondTV, Android TV 11, Realtek
+        g13 { dimension 'tv' }        // TCL G13, Google TV 14, MediaTek
+    }
+
     buildTypes {
         release {
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.

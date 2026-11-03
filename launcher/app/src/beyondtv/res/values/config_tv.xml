@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TCL BeyondTV (Android TV 11, Realtek rtd285o). Перекрывает одноимённые значения из main/config.xml. -->
+<resources>
+    <string-array name="dock_apps">
+        <item>ru.kinopoisk.tv</item>
+        <item>com.kinopub</item>
+        <item>com.google.android.youtube.tv</item>
+        <item>com.spotify.tv.android</item>
+        <item>com.android.vending</item>
+    </string-array>
+    <string name="live_tv_package" translatable="false">com.tcl.tv</string>
+    <string-array name="app_keys" translatable="false">
+        <!-- Кнопка Netflix (4062) открывает kinopub на главном экране -->
+        <item>4062:com.kinopub</item>
+    </string-array>
+</resources>

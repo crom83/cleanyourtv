@@ -113,6 +113,17 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return Math.max(Math.round(80 * density), Math.min(design, fit));
     }
 
+    /**
+     * Плитка дока со своим числом плиток (dock_columns): по ширине ячейки, как обычная, но крупнее предела
+     * DESIGN_W_DP, до 1.7 раза, чтобы 3–4 плитки в доке были заметно больше плиток ряда.
+     */
+    static int dockTileWidthPx(int innerWidthPx, int dock, float density) {
+        int max = Math.round(DESIGN_W_DP * 1.7f * density);
+        if (innerWidthPx <= 0 || dock <= 0) return Math.round(DESIGN_W_DP * density);
+        int fit = (int) ((innerWidthPx / dock - 12 * density) / FOCUS_SCALE);
+        return Math.max(Math.round(80 * density), Math.min(max, fit));
+    }
+
     static int tileHeightPx(int tileWidthPx) {
         return Math.round(tileWidthPx * DESIGN_H_DP / DESIGN_W_DP);
     }
@@ -415,7 +426,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
-        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density), h = tileHeightPx(w);
+        // Плитки ряда считаются по числу колонок ряда, плитки дока (viewType 2) по числу плиток в доке.
+        int w = viewType == 2 ? dockTileWidthPx(inner, dockSize, density)
+                : tileWidthPx(inner, parent.getHeight(), singleRow ? dockSize : MainActivity.COLUMNS, rowsBelowDock, dockTitle, dockRow, density);
+        int h = tileHeightPx(w);
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;
@@ -452,6 +466,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             View label = v.findViewById(R.id.label);
             label.setPadding(label.getPaddingLeft(), label.getPaddingTop(), label.getPaddingRight(), Math.round(4f * density));
         }
+        // The live line keeps to the tile's corner at any size: full size on a dock tile, smaller on a grid tile.
+        View live = v.findViewById(R.id.live);
+        float liveScale = Math.max(0.6f, Math.min(1f, w / (DESIGN_W_DP * density * 1.2f)));
+        live.setScaleX(liveScale);
+        live.setScaleY(liveScale);
+        live.addOnLayoutChangeListener((view, l, t, r, b, ol, ot, or, ob) -> {
+            view.setPivotX(r - l);
+            view.setPivotY(b - t);
+        });
         return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot);
     }
 
@@ -468,6 +491,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             h.name.setVisibility(View.INVISIBLE);
             h.banner.setImageDrawable(null);
             h.icon.setImageDrawable(null);
+            h.live.setVisibility(View.GONE);
             h.card.setOnClickListener(null);
             h.card.setOnLongClickListener(null);
             return;
@@ -508,6 +532,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             h.label.setText(e.label);
             h.label.setVisibility(uniformTiles ? View.GONE : View.VISIBLE);
         }
+        bindLive(h, e);
         h.card.setOnClickListener(v -> launch(e));
         h.card.setOnLongClickListener(v -> {
             if (tileMenu) {
@@ -523,6 +548,49 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
             return true;
         });
+    }
+
+    /** Live module card lines (LiveCards); null when module cards are off. */
+    private LiveCards liveCards;
+
+    void setLiveCards(LiveCards l) {
+        liveCards = l;
+    }
+
+    /** Only a shown card's tile carries a line: the owner said Show to that app. */
+    private void bindLive(Holder h, Entry e) {
+        LiveCards.Live l = liveCards != null && e.kind == Entry.CARD ? liveCards.get(e.pkg) : null;
+        if (l == null) {
+            h.live.setVisibility(View.GONE);
+            return;
+        }
+        h.liveText.setText(l.text);
+        h.liveIcon.setImageBitmap(l.icon);
+        h.liveIcon.setVisibility(l.icon != null ? View.VISIBLE : View.GONE);
+        h.live.setVisibility(View.VISIBLE);
+    }
+
+    /** A card's line changed: rebind only that package's tiles, with a payload so focus effects stay as they are. */
+    void liveChanged(String pkg) {
+        for (int i = 0; i < items.size(); i++) {
+            if (pkg.equals(items.get(i).pkg)) notifyItemChanged(i, LIVE);
+        }
+    }
+
+    private static final Object LIVE = new Object();
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty() && payloads.get(payloads.size() - 1) == LIVE && !isLibraryAt(position)
+                && holder instanceof Holder && position < items.size()) {
+            boolean onlyLive = true;
+            for (Object p : payloads) onlyLive &= p == LIVE;
+            if (onlyLive) {
+                bindLive((Holder) holder, items.get(position));
+                return;
+            }
+        }
+        onBindViewHolder(holder, position);
     }
 
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
@@ -571,7 +639,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     boolean isLibraryAt(int position) { return showLibrary && position == items.size(); }
 
-    @Override public int getItemViewType(int position) { return isLibraryAt(position) ? 1 : 0; }
+    /** 2: плитка дока со своим размером (dock_columns), когда в доке не столько плиток, сколько в ряду. */
+    @Override public int getItemViewType(int position) {
+        if (isLibraryAt(position)) return 1;
+        return dockRow && !singleRow && dockSize != MainActivity.COLUMNS && position < dockSize ? 2 : 0;
+    }
 
     boolean containsPackage(String pkg) {
         for (Entry entry : items) if (entry.pkg.equals(pkg)) return true;
@@ -907,6 +979,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final ImageView icon;
         final TextView label;
         final TextView name;
+        final View live;
+        final ImageView liveIcon;
+        final TextView liveText;
         final boolean animations;
         final boolean advancedEffects;
         final boolean reducedMotion;
@@ -925,6 +1000,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
             name = v.findViewById(R.id.name);
+            live = v.findViewById(R.id.live);
+            liveIcon = v.findViewById(R.id.liveIcon);
+            liveText = v.findViewById(R.id.liveText);
             this.animations = animations;
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;

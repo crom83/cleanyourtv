@@ -30,6 +30,10 @@ public final class LauncherSettingsActivity extends Activity {
     private SharedPreferences choices;
     private final TextView[] columnChoices = new TextView[4];
     private final TextView[] rowChoices = new TextView[4];
+    /** Плиток в доке (dock_columns): 0 — как в ряду, затем 3–6. */
+    private static final int[] DOCK_COLUMNS = {0, 3, 4, 5, 6};
+    private final TextView[] dockColumnChoices = new TextView[DOCK_COLUMNS.length];
+    private int dockColumns;
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
@@ -77,6 +81,19 @@ public final class LauncherSettingsActivity extends Activity {
                 refresh();
             });
         }
+        dockColumns = choices.getInt(MainActivity.DOCK_COLUMNS_KEY, getResources().getInteger(R.integer.dock_columns));
+        int[] dockColIds = {R.id.dockCols0, R.id.dockCols3, R.id.dockCols4, R.id.dockCols5, R.id.dockCols6};
+        for (int i = 0; i < dockColIds.length; i++) {
+            final int value = DOCK_COLUMNS[i];
+            dockColumnChoices[i] = findViewById(dockColIds[i]);
+            dockColumnChoices[i].setOnClickListener(v -> {
+                if (dockColumns == value) return;
+                dockColumns = value;
+                choices.edit().putInt(MainActivity.DOCK_COLUMNS_KEY, value).apply();
+                changed();
+                refresh();
+            });
+        }
         int[] rowIds = {R.id.rows0, R.id.rows1, R.id.rows2, R.id.rows3};
         for (int i = 0; i < rowIds.length; i++) {
             final int value = i;
@@ -120,6 +137,7 @@ public final class LauncherSettingsActivity extends Activity {
         if (getResources().getBoolean(R.bool.rtl_app_grid)) {
             reverseRow(columnChoices);
             reverseRow(rowChoices);
+            reverseRow(dockColumnChoices);
             reverseRow(dockChoices);
             reverseRow(clockChoices);
         }
@@ -155,12 +173,13 @@ public final class LauncherSettingsActivity extends Activity {
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
-            choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
+            choices.edit().remove("columns").remove(MainActivity.DOCK_COLUMNS_KEY).remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
                     .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
+            dockColumns = getResources().getInteger(R.integer.dock_columns);
             dockOpacity = current.dockOpacity;
             clockFormat = current.clockFormat;
             animations = current.animations;
@@ -299,6 +318,9 @@ public final class LauncherSettingsActivity extends Activity {
         for (int i = 0; i < rowChoices.length; i++) {
             rowChoices[i].setSelected(rowsBelowDock == i);
         }
+        for (int i = 0; i < dockColumnChoices.length; i++) {
+            dockColumnChoices[i].setSelected(dockColumns == DOCK_COLUMNS[i]);
+        }
         for (int i = 0; i < dockChoices.length; i++) {
             dockChoices[i].setSelected(dockOpacity == DOCK_OPACITIES[i]);
         }
@@ -321,7 +343,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private boolean hasOnTvChoices() {
-        return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
+        return choices.contains("columns") || choices.contains(MainActivity.DOCK_COLUMNS_KEY) || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
