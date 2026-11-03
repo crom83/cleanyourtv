@@ -57,6 +57,8 @@ public final class LauncherSettingsActivity extends Activity {
     private ScrollView pane;
     private final List<TextView> sectionRows = new ArrayList<>();
     private int current = -1;
+    /** While the right pane is rebuilt, focus passing over a section must not switch to it. */
+    private boolean rebuilding;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -86,7 +88,7 @@ public final class LauncherSettingsActivity extends Activity {
             row.setFocusable(true);
             row.setId(View.generateViewId());
             row.setOnFocusChangeListener((v, focused) -> {
-                if (focused) show(section);
+                if (focused && !rebuilding) show(section);
             });
             row.setOnClickListener(v -> focusFirstItem());
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(52));
@@ -142,6 +144,9 @@ public final class LauncherSettingsActivity extends Activity {
     private void rebuild() {
         View focused = items.findFocus();
         int keep = focused == null ? -1 : items.indexOfChild(rowOf(focused));
+        // Removing the focused row hands focus to the first section for a moment; that must not open it
+        rebuilding = true;
+        if (focused != null) sectionRows.get(current).requestFocus();
         items.removeAllViews();
         for (int i = 0; i < sectionRows.size(); i++) sectionRows.get(i).setSelected(i == current);
         switch (current) {
@@ -165,6 +170,7 @@ public final class LauncherSettingsActivity extends Activity {
         } else if (focused != null) {
             focusFirstItem();
         }
+        rebuilding = false;
         if (focused == null) pane.scrollTo(0, 0);
     }
 
