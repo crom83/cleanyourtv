@@ -30,7 +30,7 @@ public final class LauncherSettingsActivity extends Activity {
     private SharedPreferences choices;
     private final TextView[] columnChoices = new TextView[4];
     private final TextView[] rowChoices = new TextView[4];
-    /** Плиток в доке (dock_columns): 0 — как в ряду, затем 3–6. */
+    /** Tiles in the dock (dock_columns): 0 means as in a row, then 3 to 6. */
     private static final int[] DOCK_COLUMNS = {0, 3, 4, 5, 6};
     private final TextView[] dockColumnChoices = new TextView[DOCK_COLUMNS.length];
     private int dockColumns;

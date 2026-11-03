@@ -17,8 +17,8 @@ android {
         versionName '3.3'
     }
 
-    // Локально: по варианту на телевизор. Общий код в src/main, отличия (док, Live TV, кнопки) в
-    // src/<вариант>/res/values/config_tv.xml. Сборка: ../../../build-launcher.sh <вариант>
+    // Local build: one flavor per TV. Shared code is in src/main; what differs (dock, Live TV, keys) is in
+    // src/<flavor>/res/values/config_tv.xml. Built with build-launcher.sh <flavor> from the parent project.
     flavorDimensions = ['tv']
     productFlavors {
         beyondtv { dimension 'tv' }   // TCL BeyondTV, Android TV 11, Realtek

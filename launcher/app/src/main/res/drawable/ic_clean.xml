@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Щётка (Material "cleaning_services"): кнопка выгрузки фоновых приложений, локальная доработка. -->
+<!-- Broom (Material "cleaning_services"): the button that unloads background apps, local patch. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="22dp" android:height="22dp"
     android:viewportWidth="24" android:viewportHeight="24">

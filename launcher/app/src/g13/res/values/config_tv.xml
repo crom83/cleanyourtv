@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TCL G13 (Google TV 14, MediaTek mt5867). Перекрывает одноимённые значения из main/config.xml. -->
+<!-- TCL G13 (Google TV 14, MediaTek mt5867). Overrides the values of the same name in main/config.xml. -->
 <resources>
     <string-array name="dock_apps">
         <item>com.kinopub</item>
         <item>com.google.android.youtube.tv</item>
         <item>com.android.vending</item>
     </string-array>
-    <!-- Live TV и HDMI здесь от MediaTek, а не com.tcl.tv -->
+    <!-- Live TV and HDMI come from MediaTek here, not com.tcl.tv -->
     <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
 
-    <!-- Кнопки пульта ловит служба спец. возможностей HomeKeyService (включает build-launcher.sh с ключом install),
-         иначе их перехватывает прошивка. Коды сняты getevent/logcat 2026-11-02. -->
+    <!-- The remote's keys are caught by the HomeKeyService accessibility service (build-launcher.sh install turns
+         it on); otherwise the firmware takes them. Codes read with getevent/logcat on 2026-11-02. -->
     <string-array name="app_keys" translatable="false">
-        <item>265:com.kinopub</item>   <!-- Netflix (KEYCODE_STEM_1): прошивка открывала только Netflix -->
-        <item>4020:io.github.sumyabazar1.weather</item>   <!-- TCL Channel: погода, как кнопка T на BeyondTV (прошивка слала в магазин) -->
-        <item>4159:ignore</item>       <!-- Web: прошивка слала в магазин за com.tcl.browser -->
-        <item>4099:io.github.maxhayim.smarthome</item>   <!-- Prime Video: умный дом (Home Assistant) -->
+        <item>265:com.kinopub</item>   <!-- Netflix (KEYCODE_STEM_1): the firmware only ever opened Netflix -->
+        <item>4020:io.github.sumyabazar1.weather</item>   <!-- TCL Channel: the weather, like the T key on BeyondTV (the firmware sent it to the store) -->
+        <item>4159:ignore</item>       <!-- Web: the firmware sent it to the store for com.tcl.browser -->
+        <item>4099:io.github.maxhayim.smarthome</item>   <!-- Prime Video: the smart home (Home Assistant) -->
     </string-array>
-    <!-- Шестерёнка = 83 (KEYCODE_NOTIFICATION); раньше её панель рисовал Google TV -->
+    <!-- The gear key is 83 (KEYCODE_NOTIFICATION); Google TV used to draw its panel -->
     <integer-array name="settings_key_keycodes">
         <item>83</item>
     </integer-array>
-    <!-- false: шестерёнка сразу открывает системные Настройки (по просьбе), true: панель лаунчера -->
+    <!-- false: the gear opens the system Settings right away (as asked), true: the launcher's panel -->
     <bool name="settings_key_panel">false</bool>
-    <!-- После «Остановить» лаунчер сам включает службу обратно (нужен WRITE_SECURE_SETTINGS) -->
+    <!-- After "Stop" the launcher turns the service back on by itself (needs WRITE_SECURE_SETTINGS) -->
     <bool name="restore_key_services">true</bool>
 </resources>

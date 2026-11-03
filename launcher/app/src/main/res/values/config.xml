@@ -221,7 +221,7 @@
          where the firmware hands KEYCODE_GUIDE (172) to the stock launcher and no app ever receives it. Leave empty
          to omit. -->
     <string-array name="app_keys" translatable="false">
-        <!-- Кнопка Netflix на пульте TCL (4062) открывает kinopub (локальная доработка). -->
+        <!-- The Netflix key on a TCL remote (4062) opens kinopub (local patch). -->
         <item>4062:com.kinopub</item>
     </string-array>
 
@@ -289,15 +289,15 @@
          shelf above it. false makes the dock apps simply the first tiles of one plain grid (still in dock_apps
          order, no empty slots), with names under every tile and the glow behind every focused tile. -->
     <bool name="dock_row">true</bool>
-    <!-- Ряды под доком встают на место дока, а док уезжает вверх, на место надписи (локальная доработка). -->
+    <!-- The rows below the dock move into its place and the dock slides up into the title's place (local patch). -->
     <bool name="lift_dock">true</bool>
-    <!-- Сетка уходит под верхнюю панель и растворяется к краю экрана, вместо обрезки (локальная доработка). -->
+    <!-- The grid slides under the top bar and fades out towards the screen's edge instead of being cut off (local patch). -->
     <bool name="rows_under_header">true</bool>
-    <!-- Кнопка-щётка в верхней панели: выгрузить фоновые приложения (локальная доработка). -->
+    <!-- A broom button in the top bar that unloads background apps (local patch). -->
     <bool name="clean_button">true</bool>
-    <!-- Плиток в доке, отдельно от плиток в ряду; 0: как в ряду. На TV меняется в «Настройках лаунчера» (локальная доработка). -->
+    <!-- Tiles in the dock, apart from tiles in a row; 0: as in a row. Changed on the TV in the launcher settings (local patch). -->
     <integer name="dock_columns">0</integer>
-    <!-- Что открывает кнопка «T» на пульте TCL; пусто: ничего (локальная доработка). -->
+    <!-- What the "T" key on a TCL remote opens; empty: nothing (local patch). -->
     <string name="t_key_app" translatable="false">io.github.sumyabazar1.weather</string>
     <!-- Inputs, Wi-Fi and Settings folded into one round gear at the top right, like Google TV: OK drops a menu
          with the three, hold OK keeps the launcher menu. Off by default; a theme can set "top_menu": true. -->

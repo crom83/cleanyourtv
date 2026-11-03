@@ -1,10 +1,10 @@
 package com.gathin.tvhome;
 
 /**
- * Док со своим числом плиток (локальная доработка, dock_columns). Первые {@code dock} позиций — док,
- * дальше ряды по {@code columns}. Сетка делится на span = НОК(dock, columns) долей: плитка дока занимает
- * span/dock, плитка ряда span/columns. Вверх и вниз между доком и первым рядом ведут на ближайшую по
- * горизонтали плитку. При dock == columns всё совпадает с обычной сеткой.
+ * A dock with its own number of tiles (local patch, dock_columns). The first {@code dock} positions are the dock,
+ * then rows of {@code columns}. The grid has span = lcm(dock, columns) parts: a dock tile takes span/dock, a row
+ * tile span/columns. Up and Down between the dock and the first row go to the horizontally nearest tile. With
+ * dock == columns it is the plain grid.
  */
 final class DockGrid {
     private DockGrid() { }
@@ -19,42 +19,42 @@ final class DockGrid {
         return span(dock, columns) / (position < dock ? dock : columns);
     }
 
-    /** Первая позиция ряда, в котором стоит плитка. */
+    /** The first position of the tile's row. */
     static int rowStart(int position, int dock, int columns) {
         return position < dock ? 0 : dock + (position - dock) / columns * columns;
     }
 
-    /** Колонка плитки внутри её ряда. */
+    /** The tile's column within its row. */
     static int column(int position, int dock, int columns) {
         return position - rowStart(position, dock, columns);
     }
 
-    /** Сколько плиток в ряду этой позиции, при count плитках всего. */
+    /** How many tiles the row of this position holds, with count tiles in all. */
     static int rowSize(int position, int dock, int columns, int count) {
         int start = rowStart(position, dock, columns);
         return Math.max(0, Math.min(position < dock ? dock : columns, count - start));
     }
 
-    /** Первая позиция последнего ряда. */
+    /** The first position of the last row. */
     static int lastRowStart(int count, int dock, int columns) {
         return count <= dock ? 0 : rowStart(count - 1, dock, columns);
     }
 
-    /** Плитка дока под той же горизонталью, что и эта (сама позиция, если она в доке). */
+    /** The dock tile at the same horizontal place as this one (the position itself if it is in the dock). */
     static int toDock(int position, int dock, int columns) {
         if (position < dock) return position;
         int col = column(position, dock, columns);
         return Math.min(dock - 1, (int) ((col + 0.5f) / columns * dock));
     }
 
-    /** Позиция выше, или -1 из дока (туда, в верхнюю панель, ведёт система). */
+    /** The position above, or -1 from the dock (the system moves on to the top bar). */
     static int up(int position, int dock, int columns) {
         if (position < dock) return -1;
         if (position < dock + columns) return toDock(position, dock, columns);
         return position - columns;
     }
 
-    /** Позиция ниже, или -1, если ниже ничего нет. */
+    /** The position below, or -1 when there is nothing below. */
     static int down(int position, int dock, int columns, int count) {
         if (position < dock) {
             if (count <= dock) return -1;
@@ -65,7 +65,7 @@ final class DockGrid {
         return rowStart(position, dock, columns) < lastRowStart(count, dock, columns) ? count - 1 : -1;
     }
 
-    /** Плитка у края своего ряда: влево к началу или вправо к концу (rtl зеркалит). */
+    /** Whether the tile is at the edge of its row: left at the start or right at the end (rtl mirrors it). */
     static boolean atHorizontalEdge(int position, int rowCount, int dock, int columns, boolean rtl, boolean left) {
         boolean towardStart = left != rtl;
         int col = column(position, dock, columns);

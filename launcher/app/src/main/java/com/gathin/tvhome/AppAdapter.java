@@ -114,8 +114,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     /**
-     * Плитка дока со своим числом плиток (dock_columns): по ширине ячейки, как обычная, но крупнее предела
-     * DESIGN_W_DP, до 1.7 раза, чтобы 3–4 плитки в доке были заметно больше плиток ряда.
+     * A dock tile with its own count (dock_columns): as wide as its cell, like a normal tile, but allowed past
+     * DESIGN_W_DP, up to 1.7 times, so 3 or 4 dock tiles stand out from the row tiles.
      */
     static int dockTileWidthPx(int innerWidthPx, int dock, float density) {
         int max = Math.round(DESIGN_W_DP * 1.7f * density);
@@ -426,7 +426,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
-        // Плитки ряда считаются по числу колонок ряда, плитки дока (viewType 2) по числу плиток в доке.
+        // Row tiles are sized by the row's columns, dock tiles (viewType 2) by the number of dock tiles.
         int w = viewType == 2 ? dockTileWidthPx(inner, dockSize, density)
                 : tileWidthPx(inner, parent.getHeight(), singleRow ? dockSize : MainActivity.COLUMNS, rowsBelowDock, dockTitle, dockRow, density);
         int h = tileHeightPx(w);
@@ -639,7 +639,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     boolean isLibraryAt(int position) { return showLibrary && position == items.size(); }
 
-    /** 2: плитка дока со своим размером (dock_columns), когда в доке не столько плиток, сколько в ряду. */
+    /** 2: a dock tile with its own size (dock_columns), when the dock holds a different number of tiles than a row. */
     @Override public int getItemViewType(int position) {
         if (isLibraryAt(position)) return 1;
         return dockRow && !singleRow && dockSize != MainActivity.COLUMNS && position < dockSize ? 2 : 0;

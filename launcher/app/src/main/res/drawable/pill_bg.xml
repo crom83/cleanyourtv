@@ -14,7 +14,7 @@
             <corners android:radius="21dp" />
         </shape>
     </item>
-    <!-- Локальная доработка: тёмная подложка под стеклом, чтобы плитки под панелью не просвечивали. -->
+    <!-- Local patch: a dark base under the glass, so tiles under the bar don't show through. -->
     <item>
         <layer-list>
             <item>

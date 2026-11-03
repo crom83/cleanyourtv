@@ -110,7 +110,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
     /** Tiles per row and dock slots (res/values/config.xml, columns). Set in onCreate. */
     static int COLUMNS = 4;
-    /** Плиток в доке (локальная доработка dock_columns); равно COLUMNS, когда док как обычный ряд. */
+    /** Tiles in the dock (local patch dock_columns); equals COLUMNS when the dock is a plain row. */
     static int DOCK = 4;
     static final String DOCK_COLUMNS_KEY = "dock_columns";
     private boolean rtlAppGrid;
@@ -237,12 +237,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     // How far the grid has scrolled the glass. springY works without it, in grid content space, so a
     // scroll moves the glass in lockstep with its tile instead of becoming a moving spring target.
     private float glassScrollShift;
-    /** config.xml lift_dock: ряды под доком встают на место дока, док уезжает вверх. */
+    /** config.xml lift_dock: the rows below the dock move into its place and the dock slides up. */
     private boolean liftDock;
-    /** rows_under_header: верхняя панель, под которую уходит сетка; null, когда доработка выключена. */
+    /** rows_under_header: the top bar the grid slides under; null when the patch is off. */
     private View headerView;
 
-    /** Сколько пикселей сверху сетки закрыто панелью (низ панели плюс прежний отступ 10dp), 0 без доработки. */
+    /** How many pixels at the grid's top the bar covers (the bar's bottom plus the old 10dp gap), 0 without the patch. */
     private int headerInset() {
         return headerView == null ? 0 : headerView.getBottom() + (int) (10 * density);
     }
@@ -730,7 +730,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
             int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
             int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
-            // dock_columns: док со своим числом плиток, и его высота считается по его плиткам.
+            // dock_columns: a dock with its own number of tiles, so its height comes from its tiles.
             int dockTileW = DOCK == COLUMNS ? tileW : AppAdapter.dockTileWidthPx(inner, DOCK, density);
             int dockRow = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(dockTileW), density)
                     + (int) (AppAdapter.DOCK_EXTRA_DP * density);   // item height plus DockDecoration offsets
@@ -741,7 +741,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int want = Math.max(shelfClearance, h - dockRow - gridRows - (int) (AppAdapter.BOTTOM_ROOM_DP * density));
             // Where the rows cannot fit even at the smallest tile (3 rows with the title on), the title keeps its
             // room above the dock and the last rows run off the bottom instead of the title drawing over the clock.
-            // rows_under_header: сетка начинается от верха экрана, поэтому место под заголовок отсчитывается от низа панели.
+            // rows_under_header: the grid starts at the top of the screen, so the title's room is counted from the bar's bottom.
             int inset = headerInset();
             if (MainActivity.this.dockRow && cfg.dockTitle && (rowsBelowDock > 0 || inset > 0)) want = Math.max(want, inset + (int) (AppAdapter.TITLE_ROOM_DP * density));
             // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
@@ -1914,7 +1914,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // fade out left the grid on plain black.
             showGlowOnly(position);
             if (dockRow && !singleRow && liftDock) {
-                // lift_dock: выделенный ряд встаёт на место дока, а док уезжает вверх, на место пустой надписи.
+                // lift_dock: the focused row moves into the dock's place and the dock slides up into the empty title's place.
                 int dy = item.getTop() - grid.getPaddingTop();
                 if (Math.abs(dy) > (int) (8 * density)) {
                     if (!animations || reducedMotion) grid.scrollBy(0, dy);

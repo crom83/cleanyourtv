@@ -48,7 +48,7 @@
             <TextView android:id="@+id/columns7" style="@style/SettingsColumnChoice" android:text="7" />
         </LinearLayout>
 
-        <!-- Плиток в доке (локальная доработка dock_columns). -->
+        <!-- Tiles in the dock (local patch dock_columns). -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

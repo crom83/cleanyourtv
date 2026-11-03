@@ -13,9 +13,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 /**
- * rows_under_header (локальная доработка): сетка растянута до верха экрана и уходит под верхнюю панель,
- * а не обрезается по линии под ней. Ряды плавно растворяются от низа панели к краю экрана.
- * Панель рисуется поверх сетки (translationZ). Позиция дока не меняется: отступ сетки считается от её низа.
+ * rows_under_header (local patch): the grid reaches the top of the screen and slides under the top bar instead of
+ * being cut off at a line below it. Rows fade out from the bottom of the bar to the screen's edge. The bar is drawn
+ * over the grid (translationZ). The dock stays where it was: the grid's inset is counted from the bar's bottom.
  */
 final class HeaderFade extends RecyclerView.ItemDecoration {
 
@@ -27,19 +27,19 @@ final class HeaderFade extends RecyclerView.ItemDecoration {
         paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
     }
 
-    /** header: верхняя панель; wrapper: рамка сетки, следующая за панелью в том же вертикальном LinearLayout. */
+    /** header: the top bar; wrapper: the grid's frame, next to the bar in the same vertical LinearLayout. */
     static void attach(RecyclerView grid, View header, View wrapper) {
         HeaderFade fade = new HeaderFade();
-        // Без отдельного слоя DST_OUT стёр бы всё окно, а не только картинку сетки.
+        // Without a layer of its own, DST_OUT would erase the whole window, not just the grid's picture.
         grid.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         grid.addItemDecoration(fade);
         header.setTranslationZ(1f);
-        // Под часами теперь бывают плитки: тень отделяет приветствие, часы и дату от них.
+        // Tiles can now pass under the clock: a shadow keeps the greeting, clock and date apart from them.
         shadowTexts(header.findViewById(R.id.leftBlock), header.getResources().getDisplayMetrics().density);
         header.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            // Рамка сетки начинается от верха экрана, а не под панелью.
-            // LinearLayout не растягивает блок с весом на отрицательный отступ, поэтому высота задаётся явно:
-            // от верха до низа экрана.
+            // The grid's frame starts at the top of the screen, not under the bar.
+            // LinearLayout doesn't stretch a weighted child over a negative margin, so the height is set outright:
+            // from the top of the screen to the bottom.
             android.widget.LinearLayout.LayoutParams lp = (android.widget.LinearLayout.LayoutParams) wrapper.getLayoutParams();
             View parent = (View) wrapper.getParent();
             int height = parent.getHeight() - parent.getPaddingBottom();
@@ -49,7 +49,7 @@ final class HeaderFade extends RecyclerView.ItemDecoration {
                 lp.weight = 0f;
                 wrapper.post(() -> wrapper.setLayoutParams(lp));
             }
-            // Полностью видимы ряды ниже панели, к верху экрана они растворяются.
+            // Rows below the bar are fully visible; towards the top of the screen they fade out.
             fade.fadeEnd = b;
             grid.invalidate();
         });
@@ -68,7 +68,7 @@ final class HeaderFade extends RecyclerView.ItemDecoration {
     public void onDrawOver(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
         if (fadeEnd <= 0f) return;
         if (fadeEnd != shaderEnd) {
-            // В зоне часов и даты плитки почти исчезают (стирается 85%), полностью проявляются у низа панели.
+            // Around the clock and date tiles almost vanish (85% erased) and are fully back at the bar's bottom.
             paint.setShader(new LinearGradient(0f, 0f, 0f, fadeEnd,
                     new int[]{0xFF000000, 0xD9000000, 0x00000000}, new float[]{0f, 0.7f, 1f}, Shader.TileMode.CLAMP));
             shaderEnd = fadeEnd;

@@ -7,9 +7,9 @@ import android.content.pm.ApplicationInfo;
 import android.widget.Toast;
 
 /**
- * Кнопка-щётка в верхней панели (локальная доработка, clean_button): выгружает фоновые процессы всех приложений
- * через killBackgroundProcesses и показывает, сколько памяти освободилось. Открытое на экране приложение,
- * системные и постоянные процессы Android не трогает; часть служб система сразу запускает снова.
+ * The broom button in the top bar (local patch, clean_button): unloads every app's background processes with
+ * killBackgroundProcesses and shows how much memory came free. Android leaves the app on screen, system and
+ * persistent processes alone, and starts some services again right away.
  */
 final class BackgroundCleaner {
     private BackgroundCleaner() { }
@@ -26,17 +26,17 @@ final class BackgroundCleaner {
                     am.killBackgroundProcesses(app.packageName);
                     count++;
                 } catch (RuntimeException ignored) {
-                    // Пакет пропал или система отказала: просто дальше.
+                    // The package went away or the system refused: go on.
                 }
             }
             try {
-                Thread.sleep(1500); // память возвращается системе не мгновенно
+                Thread.sleep(1500); // memory takes a moment to come back to the system
             } catch (InterruptedException ignored) {
             }
             long freed = Math.max(0, availMb(am) - before);
             long free = availMb(am);
             activity.runOnUiThread(() -> Toast.makeText(activity,
-                    "Освобождено " + freed + " МБ · свободно " + free + " МБ", Toast.LENGTH_LONG).show());
+                    activity.getString(R.string.clean_freed, freed, free), Toast.LENGTH_LONG).show());
         }, "cleaner").start();
     }
 

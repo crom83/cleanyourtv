@@ -8,7 +8,7 @@
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Кнопка-щётка: выгрузка фоновых приложений и список всех пакетов для неё (локальная доработка). -->
+    <!-- Broom button: unloads background apps, and lists every package for it (local patch). -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -181,7 +181,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Кнопка «T» на пульте TCL: прошивка запускает это действие (локальная доработка). -->
+        <!-- The "T" key on a TCL remote: the firmware starts this action (local patch). -->
         <activity
             android:name=".TKeyActivity"
             android:exported="true"

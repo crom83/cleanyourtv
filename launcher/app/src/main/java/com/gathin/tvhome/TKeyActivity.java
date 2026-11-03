@@ -5,9 +5,8 @@ import android.content.Intent;
 import android.os.Bundle;
 
 /**
- * Кнопка «T» на пульте TCL (локальная доработка). Прошивка по нажатию запускает действие
- * com.tcl.partnercustomizer.tkey; раньше на него отвечал TCL Channel, теперь этот невидимый экран
- * открывает приложение из config.xml t_key_app.
+ * The "T" key on a TCL remote (local patch). The firmware starts the action com.tcl.partnercustomizer.tkey on a
+ * press; TCL Channel used to answer it, now this invisible screen opens the app named in config.xml t_key_app.
  */
 public final class TKeyActivity extends Activity {
     @Override
@@ -21,7 +20,7 @@ public final class TKeyActivity extends Activity {
             try {
                 startActivity(launch);
             } catch (RuntimeException ignored) {
-                // Приложение удалено или выключено: кнопка просто ничего не делает.
+                // The app is removed or disabled: the key simply does nothing.
             }
         }
         finish();
