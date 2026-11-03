@@ -108,6 +108,8 @@
     <string name="reorder_hint">ОК — взять приложение, стрелки — переместить, Назад — поставить. Ещё раз Назад — готово.</string>
     <string name="reorder_not_saved">Не удалось сохранить новый порядок</string>
     <string name="app_library">Библиотека приложений</string>
+    <string name="live_cards_state">Живые плитки: %1$s</string>
+    <string name="live_cards_hint">Аддоны вроде погоды показывают на своей плитке короткую строку, пока открыт главный экран. Выключено: память не тратится, ни один аддон ради главного экрана не запускается.</string>
     <string name="clean_button">Выгрузить фоновые приложения</string>
     <string name="clean_freed">Освобождено %1$d МБ · свободно %2$d МБ</string>
     <string name="library_empty">Нет приложений для запуска</string>

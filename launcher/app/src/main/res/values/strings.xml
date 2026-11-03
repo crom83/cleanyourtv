@@ -111,6 +111,9 @@
     <string name="reorder_hint">OK picks up an app, arrows move it, Back places it. Back again to finish.</string>
     <string name="reorder_not_saved">Couldn\'t save the new order</string>
     <string name="app_library">App library</string>
+    <!-- Live tiles (local patch, live_cards) -->
+    <string name="live_cards_state">Live tiles: %1$s</string>
+    <string name="live_cards_hint">Add-ons such as the weather put a short line on their tile while Home is open. Off saves memory: no add-on is started for Home.</string>
     <!-- Broom button (local patch, clean_button) -->
     <string name="clean_button">Unload background apps</string>
     <string name="clean_freed">Freed %1$d MB · %2$d MB free</string>

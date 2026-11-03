@@ -113,6 +113,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Tiles in the dock (local patch dock_columns); equals COLUMNS when the dock is a plain row. */
     static int DOCK = 4;
     static final String DOCK_COLUMNS_KEY = "dock_columns";
+    /** The owner's choice for live tiles (launcher settings), over config.xml live_cards. */
+    static final String LIVE_CARDS_KEY = "live_cards";
     private boolean rtlAppGrid;
     private static final long MINUTE_MS = 60_000L;
     private static final long STATS_MS = 10_000L;
@@ -715,7 +717,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     AnimationUtils.loadAnimation(this, R.anim.tile_enter), 0.06f));
         }
         adapter = new AppAdapter(this, this, DOCK, cfg);
-        if (moduleCards) {
+        // Off: the add-ons are never asked, so none of them is started for Home
+        if (moduleCards && getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
+                .getBoolean(LIVE_CARDS_KEY, getResources().getBoolean(R.bool.live_cards))) {
             liveCards = new LiveCards(this, handler, pkg -> adapter.liveChanged(pkg));
             adapter.setLiveCards(liveCards);
         }

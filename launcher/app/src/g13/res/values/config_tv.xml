@@ -25,4 +25,6 @@
     <bool name="settings_key_panel">false</bool>
     <!-- After "Stop" the launcher turns the service back on by itself (needs WRITE_SECURE_SETTINGS) -->
     <bool name="restore_key_services">true</bool>
+    <!-- Live tiles on: the weather and smart home add-ons put their line on their tiles -->
+    <bool name="live_cards">true</bool>
 </resources>

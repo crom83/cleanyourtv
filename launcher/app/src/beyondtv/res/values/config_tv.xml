@@ -13,4 +13,6 @@
         <!-- The Netflix key (4062) opens kinopub on the home screen -->
         <item>4062:com.kinopub</item>
     </string-array>
+    <!-- Live tiles on: the weather and smart home add-ons put their line on their tiles -->
+    <bool name="live_cards">true</bool>
 </resources>

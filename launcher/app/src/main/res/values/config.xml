@@ -297,6 +297,10 @@
     <bool name="clean_button">true</bool>
     <!-- Tiles in the dock, apart from tiles in a row; 0: as in a row. Changed on the TV in the launcher settings (local patch). -->
     <integer name="dock_columns">0</integer>
+    <!-- Live tiles (local patch, LiveCards): a shown module card's add-on may put a short line on its tile, read only
+         while Home is on screen. Off by default: each add-on that answers keeps a process of its own in memory. The
+         owner can switch it in the launcher settings. -->
+    <bool name="live_cards">false</bool>
     <!-- What the "T" key on a TCL remote opens; empty: nothing (local patch). -->
     <string name="t_key_app" translatable="false">io.github.sumyabazar1.weather</string>
     <!-- Inputs, Wi-Fi and Settings folded into one round gear at the top right, like Google TV: OK drops a menu

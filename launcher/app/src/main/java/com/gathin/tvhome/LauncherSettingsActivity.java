@@ -41,6 +41,8 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView wallpaperChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
+    private TextView liveCardsChoice;
+    private boolean liveCards;
     private TextView followThemeChoice;
     private TextView openOnStartChoice;
     private int columns;
@@ -152,6 +154,18 @@ public final class LauncherSettingsActivity extends Activity {
             changed();
             refresh();
         });
+        liveCards = choices.getBoolean(MainActivity.LIVE_CARDS_KEY, getResources().getBoolean(R.bool.live_cards));
+        liveCardsChoice = findViewById(R.id.liveCardsChoice);
+        // Only where module cards are on: live tiles are a module card's extra
+        boolean cardsOn = config.moduleCards;
+        liveCardsChoice.setVisibility(cardsOn ? View.VISIBLE : View.GONE);
+        findViewById(R.id.liveCardsHint).setVisibility(cardsOn ? View.VISIBLE : View.GONE);
+        liveCardsChoice.setOnClickListener(v -> {
+            liveCards = !liveCards;
+            choices.edit().putBoolean(MainActivity.LIVE_CARDS_KEY, liveCards).apply();
+            changed();
+            refresh();
+        });
         advancedChoice = findViewById(R.id.advancedChoice);
         advancedChoice.setOnClickListener(v -> {
             if (advancedEffects) {
@@ -175,11 +189,13 @@ public final class LauncherSettingsActivity extends Activity {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(MainActivity.DOCK_COLUMNS_KEY).remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY)
+                    .remove(MainActivity.LIVE_CARDS_KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
             dockColumns = getResources().getInteger(R.integer.dock_columns);
+            liveCards = getResources().getBoolean(R.bool.live_cards);
             dockOpacity = current.dockOpacity;
             clockFormat = current.clockFormat;
             animations = current.animations;
@@ -331,6 +347,7 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(animations ? R.string.on : R.string.off)));
         advancedChoice.setText(getString(R.string.advanced_effects_state,
                 getString(advancedEffects ? R.string.on : R.string.off)));
+        liveCardsChoice.setText(getString(R.string.live_cards_state, getString(liveCards ? R.string.on : R.string.off)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
@@ -346,7 +363,8 @@ public final class LauncherSettingsActivity extends Activity {
         return choices.contains("columns") || choices.contains(MainActivity.DOCK_COLUMNS_KEY) || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
+                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY)
+                || choices.contains(MainActivity.LIVE_CARDS_KEY);
     }
 
     private void open(Intent intent) {
