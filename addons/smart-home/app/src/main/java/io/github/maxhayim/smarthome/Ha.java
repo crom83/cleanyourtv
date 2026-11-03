@@ -4,10 +4,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Home Assistant's REST API (https://developers.home-assistant.io/docs/api/rest): what GET /api/states returns,
@@ -32,6 +36,12 @@ final class Ha {
         final double current;
         final double target;
         final String unit;
+        /** An RGB light's current colour (0xFFRRGGBB), or 0: off, in a white mode, or not an RGB light. */
+        int color;
+        /** The light takes a colour (supported_color_modes has rgb, rgbw, rgbww, hs or xy). */
+        boolean colorable;
+        /** The light has a white mode (supported_color_modes has white). */
+        boolean whiteMode;
 
         Entity(String id, Kind kind, String name, String state, int brightness, double current, double target, String unit) {
             this.id = id;
@@ -53,9 +63,14 @@ final class Ha {
             return !"unavailable".equals(state) && !"unknown".equals(state);
         }
 
-        /** What the row shows on the right. */
+        /** What the row shows on the right, in English (tests and the default). */
         String value() {
-            if (!available()) return "Unavailable";
+            return value(ENGLISH);
+        }
+
+        /** What the row shows on the right, in the TV's language. */
+        String value(Lang lng) {
+            if (!available()) return lng.unavailable();
             switch (kind) {
                 case WEATHER:
                     return Double.isNaN(current) ? capital(state) : number(current) + "°";
@@ -66,10 +81,10 @@ final class Ha {
                         return state;
                     }
                 case SCENE:
-                    return "Run";
+                    return lng.run();
                 case TOGGLE:
                     boolean on = "on".equals(state);
-                    return on && brightness >= 0 ? "On · " + brightness + " %" : on ? "On" : "Off";
+                    return on && brightness >= 0 ? lng.onAt(brightness) : on ? lng.on() : lng.off();
                 case CLIMATE:
                     String now = Double.isNaN(current) ? "" : number(current) + unit;
                     String set = Double.isNaN(target) ? "" : number(target) + unit;
@@ -81,14 +96,62 @@ final class Ha {
                         return state;
                     }
                 case OPENING:
-                    return "on".equals(state) ? "Open" : "Closed";
+                    return "on".equals(state) ? lng.open() : lng.closed();
                 case LOCK:
-                    return "locked".equals(state) ? "Locked" : "unlocked".equals(state) ? "Unlocked" : capital(state);
+                    return "locked".equals(state) ? lng.locked() : "unlocked".equals(state) ? lng.unlocked() : capital(state);
                 default:
                     return state;
             }
         }
     }
+
+    /**
+     * The language of what the screen shows for states, sections and errors. {@link #ENGLISH} is the default and what the
+     * JVM tests read; the app passes its string resources ({@code Texts}), so the TV's language is used.
+     */
+    interface Lang {
+        String unavailable();
+        String run();
+        String on();
+        String off();
+        /** On, with brightness 0 to 100. */
+        String onAt(int brightness);
+        String open();
+        String closed();
+        String locked();
+        String unlocked();
+        String section(Kind k);
+        String refusedToken();
+        String notTheApi();
+        String unreachable();
+        String httpError(int code);
+    }
+
+    static final Lang ENGLISH = new Lang() {
+        public String unavailable() { return "Unavailable"; }
+        public String run() { return "Run"; }
+        public String on() { return "On"; }
+        public String off() { return "Off"; }
+        public String onAt(int b) { return "On · " + b + " %"; }
+        public String open() { return "Open"; }
+        public String closed() { return "Closed"; }
+        public String locked() { return "Locked"; }
+        public String unlocked() { return "Unlocked"; }
+        public String section(Kind k) {
+            switch (k) {
+                case SCENE: return "Scenes";
+                case TOGGLE: return "Lights and switches";
+                case CLIMATE: return "Climate";
+                case SENSOR: return "Sensors";
+                case OPENING: return "Doors and windows";
+                default: return "Locks";
+            }
+        }
+        public String refusedToken() { return "Home Assistant refused the access token."; }
+        public String notTheApi() { return "That address answers, but it isn't Home Assistant's API."; }
+        public String unreachable() { return "Can't reach Home Assistant at that address."; }
+        public String httpError(int code) { return "Home Assistant answered with error " + code + "."; }
+    };
 
     /**
      * What the glance header shows: one weather entity and up to {@link #MAX_PRICES} fuel prices.
@@ -166,13 +229,19 @@ final class Ha {
      * or weather entities can't push the switches out.
      */
     static List<Entity> parse(String json, List<String> glanceIds) throws JSONException {
+        return parse(json, glanceIds, Collections.emptyList(), false);
+    }
+
+    /** The same, without entities whose entity_id matches one of the {@code exclude} patterns. */
+    static List<Entity> parse(String json, List<String> glanceIds, List<String> exclude, boolean hideUnavailable)
+            throws JSONException {
         JSONArray all = new JSONArray(json);
         List<Entity> out = new ArrayList<>();
         for (int i = 0; i < all.length(); i++) {
             JSONObject o = all.optJSONObject(i);
             if (o == null) continue;
             Entity e = entity(o);
-            if (e != null) out.add(e);
+            if (e != null && !excluded(e.id, exclude)) out.add(e);
         }
         out.sort((a, b) -> a.kind != b.kind ? a.kind.compareTo(b.kind) : a.name.compareToIgnoreCase(b.name));
         Glance header = glance(out, glanceIds);
@@ -182,6 +251,7 @@ final class Ha {
         int rows = 0;
         for (Entity e : out) {
             if (!inList(e)) continue;
+            if (hideUnavailable && !e.available()) continue;
             if (rows++ == MAX_ENTITIES) break;
             kept.add(e);
         }
@@ -219,6 +289,20 @@ final class Ha {
             }
         }
         return new Glance(weather, prices);
+    }
+
+    /** A pattern with * (any characters), ignoring case; without * it is an exact entity_id. */
+    static boolean excluded(String id, List<String> patterns) {
+        if (patterns == null || id == null) return false;
+        for (String p : patterns) {
+            StringBuilder re = new StringBuilder("(?i)");
+            for (String part : p.split("\\*", -1)) {
+                if (re.length() > 4) re.append(".*");
+                re.append(java.util.regex.Pattern.quote(part));
+            }
+            if (id.matches(re.toString())) return true;
+        }
+        return false;
     }
 
     /** Rows for the remote list: weather and prices live in the glance header only. */
@@ -286,7 +370,19 @@ final class Ha {
                 return new Entity(id, Kind.SCENE, name, state, -1, Double.NaN, Double.NaN, "");
             case "light":
                 int b = a.has("brightness") && !a.isNull("brightness") ? (int) Math.round(a.optDouble("brightness", 0) * 100 / 255) : -1;
-                return new Entity(id, Kind.TOGGLE, name, state, b, Double.NaN, Double.NaN, "");
+                Entity light = new Entity(id, Kind.TOGGLE, name, state, b, Double.NaN, Double.NaN, "");
+                light.color = rgb(state, a);
+                JSONArray modes = a.optJSONArray("supported_color_modes");
+                if (modes != null) {
+                    for (int i = 0; i < modes.length(); i++) {
+                        String m = modes.optString(i);
+                        if (m.equals("rgb") || m.equals("rgbw") || m.equals("rgbww") || m.equals("hs") || m.equals("xy")) {
+                            light.colorable = true;
+                        }
+                        if (m.equals("white")) light.whiteMode = true;
+                    }
+                }
+                return light;
             case "switch":
             case "fan":
             case "input_boolean":
@@ -309,6 +405,200 @@ final class Ha {
             default:
                 return null;
         }
+    }
+
+    /** The colour from rgb_color, only while the light is on in a colour mode (not white or color_temp). */
+    static int rgb(String state, JSONObject a) {
+        if (!"on".equals(state)) return 0;
+        String mode = a.optString("color_mode", "");
+        if (mode.equals("white") || mode.equals("color_temp") || mode.equals("brightness") || mode.equals("onoff")) return 0;
+        JSONArray c = a.optJSONArray("rgb_color");
+        if (c == null || c.length() != 3) return 0;
+        int r = c.optInt(0, -1), g = c.optInt(1, -1), b = c.optInt(2, -1);
+        if (r < 0 || g < 0 || b < 0) return 0;
+        return 0xFF000000 | (Math.min(r, 255) << 16) | (Math.min(g, 255) << 8) | Math.min(b, 255);
+    }
+
+    /** location_name from GET /api/config (the home's name in Home Assistant), or "". */
+    static String locationName(String json) {
+        try {
+            return new JSONObject(json).optString("location_name", "").trim();
+        } catch (JSONException | RuntimeException e) {
+            return "";
+        }
+    }
+
+    /** A pending update: an update.* entity in state on. */
+    static final class Update {
+        final String id;
+        final String title;
+        final String installed;
+        final String latest;
+        /** supported_features: 1 install, 4 progress, 8 backup. */
+        int features;
+        boolean inProgress;
+        /** Install progress 0 to 100, or -1. */
+        int percent = -1;
+
+        Update(String id, String title, String installed, String latest) {
+            this.id = id;
+            this.title = title;
+            this.installed = installed;
+            this.latest = latest;
+        }
+
+        boolean canInstall() {
+            return (features & 1) != 0;
+        }
+
+        boolean canBackup() {
+            return (features & 8) != 0;
+        }
+    }
+
+    /** The colours offered for an RGB light, as 0xRRGGBB, in two rows of six; the first is white. */
+    static final int[] PALETTE = {
+            0xFFFFFF, 0xFFB46E, 0xFF0000, 0xFF6400, 0xFFDC00, 0x96FF00,
+            0x00FF00, 0x00FFC8, 0x0096FF, 0x0000FF, 0x9600FF, 0xFF0096,
+    };
+
+    /** Sets a light's colour. White goes to the light's white mode when it has one. */
+    static Call color(Entity e, int rgb) {
+        if (rgb == 0xFFFFFF && e.whiteMode) {
+            int b = e.brightness > 0 ? Math.round(e.brightness * 255 / 100f) : 255;
+            return call("light", "turn_on", e.id, "\"white\":" + b);
+        }
+        return call("light", "turn_on", e.id, "\"rgb_color\":[" + ((rgb >> 16) & 0xFF) + "," + ((rgb >> 8) & 0xFF) + ","
+                + (rgb & 0xFF) + "]");
+    }
+
+    /** The palette entry closest to the light's colour; white when it has none. */
+    static int nearest(Entity e) {
+        if (e.color == 0) return 0;
+        int best = 0;
+        long bestD = Long.MAX_VALUE;
+        for (int i = 0; i < PALETTE.length; i++) {
+            int p = PALETTE[i];
+            long dr = ((p >> 16) & 0xFF) - ((e.color >> 16) & 0xFF);
+            long dg = ((p >> 8) & 0xFF) - ((e.color >> 8) & 0xFF);
+            long db = (p & 0xFF) - (e.color & 0xFF);
+            long d = dr * dr + dg * dg + db * db;
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /** Installs the update, with a backup first where Home Assistant supports one for it. */
+    static Call install(Update u) {
+        return call("update", "install", u.id, u.canBackup() ? "\"backup\":true" : null);
+    }
+
+    /** Pending updates from /api/states, by title. The exclude patterns don't apply to them. */
+    static List<Update> updates(String json) {
+        List<Update> out = new ArrayList<>();
+        try {
+            JSONArray all = new JSONArray(json);
+            for (int i = 0; i < all.length(); i++) {
+                JSONObject o = all.optJSONObject(i);
+                if (o == null) continue;
+                String id = o.optString("entity_id", "");
+                if (!id.startsWith("update.") || !"on".equals(o.optString("state"))) continue;
+                JSONObject a = o.optJSONObject("attributes");
+                if (a == null) a = new JSONObject();
+                String title = a.optString("title", "");
+                if (title.isEmpty() || a.isNull("title")) title = a.optString("friendly_name", id);
+                Update u = new Update(id, title, a.optString("installed_version", ""), a.optString("latest_version", ""));
+                u.features = a.optInt("supported_features", 0);
+                Object p = a.opt("in_progress");
+                u.inProgress = Boolean.TRUE.equals(p) || p instanceof Number;
+                if (a.has("update_percentage") && !a.isNull("update_percentage")) {
+                    u.percent = (int) Math.round(a.optDouble("update_percentage", -1));
+                } else if (p instanceof Number) {
+                    u.percent = ((Number) p).intValue();
+                }
+                out.add(u);
+            }
+        } catch (JSONException e) {
+            return out;
+        }
+        out.sort((x, y) -> x.title.compareToIgnoreCase(y.title));
+        return out;
+    }
+
+    // ---- Rooms (Home Assistant areas) for the tile grid ----
+
+    /** Template for POST /api/template: one "entity_id<TAB>area" line per entity. */
+    static final String AREAS_TEMPLATE =
+            "{% for s in states %}{{ s.entity_id }}\t{{ area_name(s.entity_id) or '' }}\n{% endfor %}";
+
+    static Call areasCall() {
+        return new Call("/api/template", "{\"template\":" + JSONObject.quote(AREAS_TEMPLATE) + "}");
+    }
+
+    /** The template's answer as entity_id to area; entities without an area are left out. */
+    static Map<String, String> parseAreas(String text) {
+        Map<String, String> out = new HashMap<>();
+        if (text == null) return out;
+        for (String line : text.split("\n")) {
+            int tab = line.indexOf('\t');
+            if (tab <= 0) continue;
+            String id = line.substring(0, tab).trim();
+            String area = line.substring(tab + 1).trim();
+            if (!id.isEmpty() && !area.isEmpty()) out.put(id, area);
+        }
+        return out;
+    }
+
+    /** A room: tiles (switchable things, scenes, climate, locks, doors) and the sensors for its header line. */
+    static final class Room {
+        final String name;
+        final List<Entity> tiles = new ArrayList<>();
+        final List<Entity> sensors = new ArrayList<>();
+
+        Room(String name) {
+            this.name = name;
+        }
+
+        /** "22.1° · 63%": temperatures, then humidity; unavailable sensors are skipped. */
+        String summary() {
+            List<String> temps = new ArrayList<>(), hums = new ArrayList<>();
+            for (Entity s : sensors) {
+                if (!s.available()) continue;
+                double v;
+                try {
+                    v = Double.parseDouble(s.state);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (s.unit.contains("%")) hums.add(number(Math.round(v)) + "%");
+                else temps.add(number(Math.round(v * 10) / 10.0) + "°");
+            }
+            List<String> all = new ArrayList<>(temps);
+            all.addAll(hums);
+            return String.join(" · ", all);
+        }
+    }
+
+    /** The list rows by room, rooms in alphabetical order, entities without an area last under {@code other}. */
+    static List<Room> rooms(List<Entity> entities, Map<String, String> areas, String other) {
+        Map<String, Room> byName = new LinkedHashMap<>();
+        Room rest = new Room(other);
+        for (Entity e : entities) {
+            if (!inList(e)) continue;
+            String a = areas == null ? null : areas.get(e.id);
+            Room r = a == null ? rest : byName.computeIfAbsent(a, Room::new);
+            if (e.kind == Kind.SENSOR) r.sensors.add(e);
+            else r.tiles.add(e);
+        }
+        List<Room> out = new ArrayList<>(byName.values());
+        Collator c = Collator.getInstance();
+        out.sort((x, y) -> c.compare(x.name, y.name));
+        out.add(rest);
+        out.removeIf(r -> r.tiles.isEmpty() && r.sensors.isEmpty());
+        return out;
     }
 
     /** OK on a row; null when the row does nothing (sensors, and locks: a TV remote never unlocks a door). */
@@ -342,14 +632,7 @@ final class Ha {
     }
 
     static String section(Kind k) {
-        switch (k) {
-            case SCENE: return "Scenes";
-            case TOGGLE: return "Lights and switches";
-            case CLIMATE: return "Climate";
-            case SENSOR: return "Sensors";
-            case OPENING: return "Doors and windows";
-            default: return "Locks";
-        }
+        return ENGLISH.section(k);
     }
 
     /** "http://192.168.1.10:8123" from what was typed: a scheme added when missing, trailing slashes dropped. */
@@ -368,10 +651,14 @@ final class Ha {
 
     /** What a failed request means for the person in front of the TV. */
     static String problem(int code) {
-        if (code == 401 || code == 403) return "Home Assistant refused the access token.";
-        if (code == 404) return "That address answers, but it isn't Home Assistant's API.";
-        if (code <= 0) return "Can't reach Home Assistant at that address.";
-        return "Home Assistant answered with error " + code + ".";
+        return problem(code, ENGLISH);
+    }
+
+    static String problem(int code, Lang lng) {
+        if (code == 401 || code == 403) return lng.refusedToken();
+        if (code == 404) return lng.notTheApi();
+        if (code <= 0) return lng.unreachable();
+        return lng.httpError(code);
     }
 
     static String number(double v) {

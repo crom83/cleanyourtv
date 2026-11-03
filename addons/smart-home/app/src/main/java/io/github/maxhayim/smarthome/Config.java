@@ -24,11 +24,23 @@ final class Config {
     final String token;
     /** Entity ids for the glance header, in order; empty means auto-pick weather and fuel prices. */
     final List<String> glance;
+    /** entity_id patterns not to show (* is any characters), for example "*_power_outage_memory". */
+    final List<String> exclude;
+    /** Hide unavailable (unpowered) devices until they come back. */
+    final boolean hideUnavailable;
+    /** update.* patterns that are shown but can't be installed from the TV. */
+    List<String> noInstall = Collections.emptyList();
 
     Config(String url, String token, List<String> glance) {
+        this(url, token, glance, null, false);
+    }
+
+    Config(String url, String token, List<String> glance, List<String> exclude, boolean hideUnavailable) {
+        this.hideUnavailable = hideUnavailable;
         this.url = url;
         this.token = token;
         this.glance = Collections.unmodifiableList(glance == null ? Collections.emptyList() : glance);
+        this.exclude = Collections.unmodifiableList(exclude == null ? Collections.emptyList() : exclude);
     }
 
     boolean complete() {
@@ -41,7 +53,10 @@ final class Config {
 
     static Config load(Context c) {
         SharedPreferences p = prefs(c);
-        return new Config(p.getString("url", ""), p.getString("token", ""), readGlance(p.getString("glance", "")));
+        Config cfg = new Config(p.getString("url", ""), p.getString("token", ""), readGlance(p.getString("glance", "")),
+                readGlance(p.getString("exclude", "")), p.getBoolean("hide_unavailable", false));
+        cfg.noInstall = Collections.unmodifiableList(readGlance(p.getString("no_install", "")));
+        return cfg;
     }
 
     static void saveUrl(Context c, String url) {
@@ -56,6 +71,10 @@ final class Config {
         prefs(c).edit().putString("glance", joinGlance(ids)).apply();
     }
 
+    static void saveExclude(Context c, List<String> patterns) {
+        prefs(c).edit().putString("exclude", joinGlance(patterns)).apply();
+    }
+
     /** Takes a pushed config.json ({"url": ..., "token": ..., "glance": [...]}) if there is one, and deletes it. */
     static boolean importPushed(Context c) {
         File dir = c.getExternalFilesDir(null);
@@ -66,6 +85,9 @@ final class Config {
             if (o.has("url")) saveUrl(c, o.optString("url"));
             if (o.has("token")) saveToken(c, o.optString("token"));
             if (o.has("glance")) saveGlance(c, parseGlance(o.opt("glance")));
+            if (o.has("exclude")) saveExclude(c, parseGlance(o.opt("exclude")));
+            if (o.has("no_install")) prefs(c).edit().putString("no_install", joinGlance(parseGlance(o.opt("no_install")))).apply();
+            if (o.has("hide_unavailable")) prefs(c).edit().putBoolean("hide_unavailable", o.optBoolean("hide_unavailable")).apply();
             return true;
         } catch (Exception e) {
             return false;

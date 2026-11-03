@@ -92,6 +92,25 @@ final class Row extends LinearLayout {
         value.setText(v);
     }
 
+    /** A red badge with a count in place of the value; null or empty removes it. */
+    void setBadge(String text) {
+        if (text == null || text.isEmpty()) {
+            value.setBackground(null);
+            value.setText("");
+            return;
+        }
+        float dp = getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(0xFFE5484D);
+        d.setCornerRadius(14 * dp);
+        value.setBackground(d);
+        value.setMinWidth(Math.round(28 * dp));
+        value.setGravity(Gravity.CENTER);
+        value.setTextColor(0xFFFFFFFF);
+        value.setPadding(Math.round(10 * dp), Math.round(2 * dp), Math.round(10 * dp), Math.round(2 * dp));
+        value.setText(text);
+    }
+
     /** The slider's position, 0 to 1. */
     void setBar(float fraction) {
         if (fill == null) return;
