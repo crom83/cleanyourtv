@@ -68,7 +68,7 @@ final class ClockScene extends FrameLayout {
         super(context);
         settings = new ClockPreferences(ClockPreferences.store(context));
         setBackgroundColor(Color.BLACK);
-        sky = new Sky(context, settings.background);
+        sky = new Sky(context, settings.background, settings.ids);
         if (settings.background != 3) addView(sky, new FrameLayout.LayoutParams(-1, -1));
         grid = new LinearLayout(context);
         grid.setOrientation(LinearLayout.VERTICAL);
@@ -147,12 +147,18 @@ final class ClockScene extends FrameLayout {
                 face.time.setText(display);
             }
             face.date.setText(reading.date);
-            String day = reading.dayDifference == 0 ? getContext().getString(R.string.same_day)
-                    : reading.dayDifference == 1 ? getContext().getString(R.string.tomorrow)
+            // As on the app's cards: "here", or how far from here, then yesterday/tomorrow where the day differs
+            String diff = ClockModel.difference(reading.minutesFromLocal);
+            String where = ClockModel.LOCAL.equals(face.id) ? getContext().getString(R.string.here)
+                    : diff.isEmpty() ? getContext().getString(R.string.same_time, reading.offset)
+                    : getContext().getString(R.string.hours_from_here, diff);
+            String day = reading.dayDifference == 1 ? getContext().getString(R.string.tomorrow)
                     : reading.dayDifference == -1 ? getContext().getString(R.string.yesterday)
+                    : reading.dayDifference == 0 ? null
                     : getResources().getQuantityString(R.plurals.day_difference, Math.abs(reading.dayDifference), reading.dayDifference);
-            face.detail.setText(getContext().getString(R.string.zone_detail, reading.offset, day));
+            face.detail.setText(day == null ? where : getContext().getString(R.string.zone_detail, where, day));
         }
+        if (settings.background == 2) sky.invalidate();   // night's shadow moves with the minutes
     }
 
     private final class Face {
@@ -208,10 +214,10 @@ final class ClockScene extends FrameLayout {
         private final float[] stars = new float[96 * 3];
         private Shader shader;
         float phase;
-        Sky(Context context, int background) {
+        Sky(Context context, int background, List<String> ids) {
             super(context);
             this.background = background;
-            map = background == 2 ? new WorldMap(context) : null;
+            map = background == 2 ? new WorldMap(context, ids) : null;
             Random random = new Random(7319);
             for (int i = 0; i < stars.length; i++) stars[i] = random.nextFloat();
         }
@@ -228,8 +234,6 @@ final class ClockScene extends FrameLayout {
                 canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
             } else if (map != null) {
                 canvas.drawColor(Color.rgb(3, 8, 15));
-                paint.setShader(null);
-                paint.setColor(Color.rgb(25, 44, 59));
                 map.draw(canvas, paint, getWidth(), getHeight());
             } else if (background == 1) {
                 canvas.drawColor(Color.rgb(3, 6, 14));

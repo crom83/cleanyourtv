@@ -1,89 +1,59 @@
-"""Generate the bundled decorative land silhouette from Natural Earth v5.1.2 110m land.
+"""Builds the screensaver map's data files from public-domain sources.
 
-Usage: python3 tools/build_map.py /path/to/ne_110m_land.geojson
-Input: https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_land.geojson
-Public-domain coastline; Equal Earth spherical projection, Savric/Patterson/Jenny (2018).
-Equations: https://proj.org/en/stable/operations/projections/eqearth.html
-All projection/simplification work happens here, never on the TV or per animation frame.
+    curl -sSL -o countries.geojson https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_110m_admin_0_countries.geojson
+    curl -sSL -o zone1970.tab https://raw.githubusercontent.com/eggert/tz/2024a/zone1970.tab
+    python3 -I tools/build_map.py countries.geojson zone1970.tab \
+        app/src/main/res/raw/world_countries.txt app/src/main/res/raw/zone_places.txt
+
+world_countries.txt: one ring per line, "CC lon,lat lon,lat ...", CC the ISO 3166 code (ISO_A2_EH), rings
+simplified with Douglas-Peucker at 0.25 degrees and rounded to 0.1 degrees; the app projects them (Equal Earth).
+zone_places.txt: "Zone/Id lat lon" from zone1970.tab, for the lights on the cities.
 """
-from pathlib import Path
-import hashlib
-import json
-import math
-import sys
+import json, sys, re
+geo, tab, out_c, out_z = sys.argv[1:5]
 
-SOURCE_SHA256 = '9e0729ee253ca7d7a5c4ae9395fb1902264c5377c52e224d13dd85010e2835d9'
+def dp(pts, tol):
+    if len(pts) < 3: return pts
+    def d(p, a, b):
+        (x,y),(x1,y1),(x2,y2)=p,a,b
+        dx,dy=x2-x1,y2-y1
+        if dx==0 and dy==0: return ((x-x1)**2+(y-y1)**2)**.5
+        t=max(0,min(1,((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy)))
+        return ((x-x1-t*dx)**2+(y-y1-t*dy)**2)**.5
+    keep=[False]*len(pts); keep[0]=keep[-1]=True
+    stack=[(0,len(pts)-1)]
+    while stack:
+        i,j=stack.pop(); best=-1; idx=-1
+        for k in range(i+1,j):
+            dd=d(pts[k],pts[i],pts[j])
+            if dd>best: best,idx=dd,k
+        if best>tol: keep[idx]=True; stack+= [(i,idx),(idx,j)]
+    return [p for p,k in zip(pts,keep) if k]
 
-def project(lon, lat):
-    theta = math.asin(math.sqrt(3) / 2 * math.sin(math.radians(lat)))
-    squared = theta * theta
-    sixth = squared ** 3
-    x = math.radians(lon) * math.cos(theta) / (math.sqrt(3) / 2 * (
-        1.340264 - 3 * 0.081106 * squared + sixth * (7 * 0.000893 + 9 * 0.003796 * squared)))
-    y = theta * (1.340264 - 0.081106 * squared + sixth * (0.000893 + 0.003796 * squared))
-    return x, y
-
-X_MAX = project(180, 0)[0]
-Y_MAX = project(0, 90)[1]
-HEIGHT = 360 * Y_MAX / X_MAX
-
-def viewport(lon, lat):
-    x, y = project(lon, lat)
-    return 180 + 180 * x / X_MAX, 180 * (Y_MAX - y) / X_MAX
-
-def simplify(points, tolerance=0.10):
-    if len(points) < 3:
-        return points
-    a, b = points[0], points[-1]
-    dx, dy = b[0] - a[0], b[1] - a[1]
-    den = dx * dx + dy * dy
-    distances = []
-    for x, y in points[1:-1]:
-        along = max(0, min(1, ((x-a[0])*dx + (y-a[1])*dy)/den)) if den else 0
-        distances.append((x-a[0]-along*dx)**2 + (y-a[1]-along*dy)**2)
-    farthest = max(distances)
-    if farthest <= tolerance*tolerance:
-        return [a, b]
-    index = distances.index(farthest) + 1
-    return simplify(points[:index+1], tolerance)[:-1] + simplify(points[index:], tolerance)
-
-def encode(ring):
-    pairs = [viewport(x, y) for x, y in ring]
-    assert all(math.isfinite(x) and math.isfinite(y) and -0.001 <= x <= 360.001
-               and -0.001 <= y <= HEIGHT + 0.001 for x, y in pairs)
-    return ' '.join(f'{x:.1f},{y:.1f}' for x, y in pairs)
-
-def main(source):
-    body = Path(source).read_bytes()
-    if hashlib.sha256(body).hexdigest() != SOURCE_SHA256:
-        raise ValueError('Expected pinned Natural Earth v5.1.2 110m land data')
-    # Known PROJ spherical example and symmetry catch projection sign/scale mistakes.
-    assert abs(project(122, 47)[0] - 1.55) < 0.01
-    assert abs(project(122, 47)[1] - 0.89) < 0.01
-    assert viewport(0, 0) == (180, HEIGHT/2)
-    assert abs(viewport(180, 0)[0] - 360) < 1e-8
-    assert abs(viewport(-180, 0)[0]) < 1e-8
-    outline = [(-180, lat) for lat in range(-90, 91, 2)] + [(180, lat) for lat in range(90, -91, -2)]
-    lines = ['o ' + encode(outline)]
-    points, rings = 0, 0
-    for feature in json.loads(body)['features']:
-        shape = feature['geometry']
-        polygons = shape['coordinates'] if shape['type'] == 'MultiPolygon' else [shape['coordinates']]
-        for polygon in polygons:
-            for ring in polygon:
-                area = abs(sum(a[0]*b[1] - b[0]*a[1] for a, b in zip(ring, ring[1:])))/2
-                if area < 0.15:
-                    continue
-                ring = simplify(ring)
-                if len(ring) < 4:
-                    continue
-                lines.append(encode(ring))
-                points += len(ring)
-                rings += 1
-    output = Path(__file__).resolve().parents[1] / 'app/src/main/res/raw/world_map.txt'
-    output.write_text('\n'.join(lines) + '\n')
-    print(json.dumps({'projection':'Equal Earth','viewport':[360,HEIGHT], 'coastline_points':points,
-                      'rings':rings,'asset_bytes':output.stat().st_size,'source_sha256':SOURCE_SHA256}))
-
-if __name__ == '__main__':
-    main(sys.argv[1])
+data=json.load(open(geo))
+lines=[]; n=0
+for f in data['features']:
+    p=f['properties']
+    cc=p.get('ISO_A2_EH') or p.get('ISO_A2')
+    if not cc or cc=='-99': cc=(p.get('ADM0_A3') or 'XX')[:2]
+    if not re.fullmatch(r'[A-Z]{2}', cc): continue
+    g=f['geometry']; polys=g['coordinates'] if g['type']=='MultiPolygon' else [g['coordinates']]
+    for poly in polys:
+        for ring in poly:
+            r=dp([(round(x,1),round(y,1)) for x,y in ring],0.25)
+            if len(r)<4: continue
+            lines.append(cc+' '+' '.join(f'{x:g},{y:g}' for x,y in r)); n+=len(r)
+open(out_c,'w').write('\n'.join(lines)+'\n')
+def coord(s):
+    m=re.fullmatch(r'([+-])(\d{2})(\d{2})(\d{2})?([+-])(\d{3})(\d{2})(\d{2})?', s)
+    sg=lambda c:1 if c=='+' else -1
+    lat=sg(m[1])*(int(m[2])+int(m[3])/60+int(m[4] or 0)/3600)
+    lon=sg(m[5])*(int(m[6])+int(m[7])/60+int(m[8] or 0)/3600)
+    return lat,lon
+zl=[]
+for line in open(tab):
+    if line.startswith('#') or not line.strip(): continue
+    cols=line.rstrip('\n').split('\t')
+    lat,lon=coord(cols[1]); zl.append(f'{cols[2]} {lat:.1f} {lon:.1f}')
+open(out_z,'w').write('\n'.join(zl)+'\n')
+print(len(lines),'rings',n,'points',len(zl),'zones')

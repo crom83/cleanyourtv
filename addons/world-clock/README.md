@@ -48,14 +48,14 @@ The Home-only timer defaults to 0/off; leave it off when using the Android scree
 never edits the launcher, its theme, Home role or settings. TV firmware without a screensaver chooser
 can still use Preview; ordinary apps do not have permission to write the secure selection directly.
 
-The [decorative map silhouette](app/src/main/res/raw/world_map.txt) is made with Natural Earth,
+The [world map](app/src/main/res/raw/world_countries.txt) is made with Natural Earth,
 [public-domain data](https://www.naturalearthdata.com/about/terms-of-use/), from
-[1:110m land, v5.1.2](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_land.geojson).
-Land and lake rings use the [Equal Earth projection](https://proj.org/en/stable/operations/projections/eqearth.html).
-They were simplified at 0.10 degrees, small rings below 0.15 square degrees omitted and projected
-coordinates rounded to 0.1 viewport units. Regenerate with the [map generator](tools/build_map.py)
-and its pinned input. All projection calculations run at development time. It is a background, without
-borders or city markers. A retained Canvas Path avoids a full-screen bitmap or map-library cache.
+[1:110m countries, v5.1.2](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_admin_0_countries.geojson),
+simplified at 0.25 degrees and drawn in the [Equal Earth projection](https://proj.org/en/stable/operations/projections/eqearth.html).
+The countries of the saved clocks are lit (the system's own zone-to-country data), each city has a warm light
+([zone1970.tab](https://github.com/eggert/tz/blob/2024a/zone1970.tab) coordinates, public domain), and night's
+shadow covers wherever the sun has set, worked out from the time and redrawn each minute. Regenerate the data
+with the [map generator](tools/build_map.py). Retained Canvas Paths avoid a full-screen bitmap or map-library cache.
 The 96 stars are generated once from a fixed seed. There are no map tiles or downloaded assets.
 
 ## Permissions
