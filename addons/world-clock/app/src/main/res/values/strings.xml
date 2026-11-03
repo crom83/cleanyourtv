@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">World Clock</string>
+    <string name="title">World clock</string>
     <string name="add_city">Add city</string>
     <string name="clock_format">Clock format</string>
     <string name="local">Local</string>
@@ -19,7 +20,6 @@
         <item quantity="one">%1$+d day from local</item>
         <item quantity="other">%1$+d days from local</item>
     </plurals>
-    <string name="local_reference">Dates compared with %1$s</string>
     <string name="controls">Arrows to move · OK for city options · Back to return</string>
     <string name="format_system">Use TV setting</string>
     <string name="format_12">12-hour time</string>
@@ -44,4 +44,9 @@
     <string name="starfield">Starfield</string>
     <string name="world_map">World map</string>
     <string name="zone_detail">%1$s · %2$s</string>
+    <!-- The TV's own clock, instead of how far it is from here -->
+    <string name="here">here</string>
+    <!-- "+7 from here": hours ahead or behind the TV's own clock -->
+    <string name="hours_from_here">%1$s h from here</string>
+    <string name="same_time">same time · %1$s</string>
 </resources>

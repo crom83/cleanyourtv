@@ -165,7 +165,7 @@ final class ClockScene extends FrameLayout {
             root.setOrientation(LinearLayout.VERTICAL);
             root.setGravity(Gravity.CENTER);
             root.setPadding(dp(12), dp(12), dp(12), dp(12));
-            TextView city = label(ClockModel.LOCAL.equals(id) ? getContext().getString(R.string.local) : ClockModel.city(id), 26);
+            TextView city = label(TimeZoneNamesCache.label(getContext(), id), 26);
             autoSize(city, 16, 26);
             root.addView(city, new LinearLayout.LayoutParams(-1, dp(36)));
             time = label("", 88);

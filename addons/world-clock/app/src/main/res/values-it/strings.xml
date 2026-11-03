@@ -21,7 +21,6 @@
         <item quantity="many">%1$+d giorni rispetto all’ora locale</item>
         <item quantity="other">%1$+d giorni rispetto all’ora locale</item>
     </plurals>
-    <string name="local_reference">Date confrontate con %1$s</string>
     <string name="controls">Frecce per spostarti · OK per le opzioni della città · Indietro per tornare</string>
     <string name="format_system">Usa l’impostazione della TV</string>
     <string name="format_12">Ora a 12 ore</string>
@@ -46,4 +45,8 @@
     <string name="starfield">Cielo stellato</string>
     <string name="world_map">Mappa del mondo</string>
     <string name="zone_detail">%1$s · %2$s</string>
+    <string name="title">Orologio mondiale</string>
+    <string name="here">qui</string>
+    <string name="hours_from_here">%1$s h da qui</string>
+    <string name="same_time">stessa ora · %1$s</string>
 </resources>

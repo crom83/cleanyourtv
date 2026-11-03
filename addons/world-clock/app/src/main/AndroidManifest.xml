@@ -25,5 +25,11 @@
             </intent-filter>
             <meta-data android:name="android.service.dream" android:resource="@xml/dream" />
         </service>
+        <!-- Clean Your TV live card: the launcher reads the second city's time here, only while Home is on screen -->
+        <meta-data android:name="com.gathin.tvhome.live" android:value="${applicationId}.card" />
+        <provider
+            android:name=".LiveCardProvider"
+            android:authorities="${applicationId}.card"
+            android:exported="true" />
     </application>
 </manifest>

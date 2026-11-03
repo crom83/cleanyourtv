@@ -83,12 +83,18 @@ final class ClockModel {
     }
 
     static List<String> search(List<String> catalogue, String query, List<String> existing, int replacing) {
+        return search(catalogue, query, existing, replacing, id -> "");
+    }
+
+    /** As above, also matching {@code names}' extra name for each zone (the city in the TV's language). */
+    static List<String> search(List<String> catalogue, String query, List<String> existing, int replacing,
+                               java.util.function.Function<String, String> names) {
         String q = normalized(query);
         String[] terms = q.isEmpty() ? new String[0] : q.split("\\s+");
         List<String> matches = new ArrayList<>();
         for (String id : catalogue) {
             if (existing.contains(id) && (replacing < 0 || !id.equals(existing.get(replacing)))) continue;
-            String text = normalized(city(id) + " " + id.replace('/', ' '));
+            String text = normalized(city(id) + " " + id.replace('/', ' ') + " " + names.apply(id));
             boolean match = true;
             for (String term : terms) if (!text.contains(term)
                     && !text.replace(" ", "").contains(term)) { match = false; break; }
@@ -120,10 +126,24 @@ final class ClockModel {
     static final class Reading {
         final String time, period, date, offset;
         final int dayDifference;
-        Reading(String time, String period, String date, String offset, int dayDifference) {
+        /** The hour of day in that city, with minutes as a fraction: what its sky looks like. */
+        final double hour;
+        /** That city's offset from local time, in minutes (negative behind). */
+        final int minutesFromLocal;
+        Reading(String time, String period, String date, String offset, int dayDifference, double hour,
+                int minutesFromLocal) {
             this.time = time; this.period = period; this.date = date;
             this.offset = offset; this.dayDifference = dayDifference;
+            this.hour = hour; this.minutesFromLocal = minutesFromLocal;
         }
+    }
+
+    /** "+7 h", "-4 h", "+5:30": a difference from local time; empty when there is none. */
+    static String difference(int minutes) {
+        if (minutes == 0) return "";
+        String sign = minutes > 0 ? "+" : "\u2212";
+        int m = Math.abs(minutes);
+        return m % 60 == 0 ? sign + (m / 60) : sign + (m / 60) + ":" + String.format(Locale.ROOT, "%02d", m % 60);
     }
 
     static Reading at(String id, Instant instant, ZoneId local, boolean twentyFour, Locale locale) {
@@ -133,7 +153,9 @@ final class ClockModel {
                 twentyFour ? "" : time.format(DateTimeFormatter.ofPattern("a", locale)),
                 time.format(DateTimeFormatter.ofPattern("EEE, d MMM", locale)),
                 "Z".equals(offset) ? "UTC" : "UTC" + offset,
-                (int) ChronoUnit.DAYS.between(instant.atZone(local).toLocalDate(), time.toLocalDate()));
+                (int) ChronoUnit.DAYS.between(instant.atZone(local).toLocalDate(), time.toLocalDate()),
+                time.getHour() + time.getMinute() / 60.0,
+                (time.getOffset().getTotalSeconds() - instant.atZone(local).getOffset().getTotalSeconds()) / 60);
     }
 
     static long nextMinute(long epochMillis) { return 60_000L - Math.floorMod(epochMillis, 60_000L); }

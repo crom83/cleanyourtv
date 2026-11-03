@@ -30,6 +30,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -47,12 +48,13 @@ import java.util.Locale;
 public final class ClockActivity extends Activity {
     private static final int INK = Color.rgb(237, 245, 252), MUTED = Color.rgb(169, 190, 210);
     private static final int ACCENT = Color.rgb(131, 214, 222);
+    /** Secondary text on the coloured skies: white, a little see-through. */
+    private static final int SOFT = 0xCCFFFFFF;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<ClockViews> clocks = new ArrayList<>();
     private final List<View> focusNodes = new ArrayList<>();
     private List<String> ids, catalogue;
     private SharedPreferences preferences;
-    private TextView reference;
     private AlertDialog dialog;
     private int selected, format;
     private boolean resumed;
@@ -130,12 +132,15 @@ public final class ClockActivity extends Activity {
     private void render() {
         clocks.clear(); focusNodes.clear();
         LinearLayout root = column();
+        root.setClipChildren(false);   // a focused card grows a little past its row
+        root.setClipToPadding(false);
         root.setPadding(dp(36), dp(22), dp(36), dp(20));
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{Color.rgb(8, 19, 34), Color.rgb(18, 37, 55)}));
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text(getString(R.string.app_name), 28, INK);
+        TextView title = text(getString(R.string.title), 28, INK);
+        title.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         toolbar.addView(title, new LinearLayout.LayoutParams(0, dp(54), 1));
         Button add = button(getString(R.string.add_city));
         add.setOnClickListener(v -> {
@@ -150,13 +155,15 @@ public final class ClockActivity extends Activity {
         screensaver.setOnClickListener(v -> screensaverOptions());
         toolbar.addView(screensaver, buttonParams()); focusNodes.add(screensaver);
         root.addView(toolbar);
-        reference = text("", 15, MUTED);
-        root.addView(reference, new LinearLayout.LayoutParams(-1, dp(38)));
         LinearLayout grid = column();
-        root.addView(grid, new LinearLayout.LayoutParams(-1, 0, 1));
+        grid.setClipChildren(false);
+        LinearLayout.LayoutParams gridTop = new LinearLayout.LayoutParams(-1, 0, 1);
+        gridTop.topMargin = dp(18);
+        root.addView(grid, gridTop);
         int columns = Math.min(3, ids.size());
         for (int start = 0; start < ids.size(); start += columns) {
             LinearLayout row = new LinearLayout(this);
+            row.setClipChildren(false);
             LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, 0, 1);
             if (start > 0) rowParams.topMargin = dp(14);
             grid.addView(row, rowParams);
@@ -169,7 +176,11 @@ public final class ClockActivity extends Activity {
                 clocks.add(card);
                 row.addView(card.root, cardParams);
                 focusNodes.add(card.root);
-                card.root.setOnFocusChangeListener((v, focused) -> { if (focused) selected = index; });
+                card.root.setOnFocusChangeListener((v, focused) -> {
+                    if (focused) selected = index;
+                    card.paint();
+                    v.animate().scaleX(focused ? 1.03f : 1f).scaleY(focused ? 1.03f : 1f).setDuration(150).start();
+                });
                 card.root.setOnClickListener(v -> cityOptions(index));
             }
         }
@@ -202,7 +213,6 @@ public final class ClockActivity extends Activity {
         ZoneId local = ZoneId.systemDefault();
         Locale locale = Locale.getDefault();
         boolean twentyFour = format == 2 || (format == 0 && android.text.format.DateFormat.is24HourFormat(this));
-        reference.setText(getString(R.string.local_reference, local.getDisplayName(TextStyle.FULL, locale)));
         for (ClockViews views : clocks) {
             ClockModel.Reading reading = ClockModel.at(views.id, instant, local, twentyFour, locale);
             if (reading.period.isEmpty()) views.time.setText(reading.time);
@@ -213,13 +223,20 @@ public final class ClockActivity extends Activity {
                 views.time.setText(display);
             }
             views.date.setText(reading.date);
-            views.offset.setText(reading.offset);
-            views.day.setText(reading.dayDifference == 0 ? getString(R.string.same_day)
-                    : reading.dayDifference == 1 ? getString(R.string.tomorrow)
+            // How far from here, or "here" on the TV's own clock; the UTC offset when it says nothing else
+            String diff = ClockModel.difference(reading.minutesFromLocal);
+            views.offset.setText(ClockModel.LOCAL.equals(views.id) ? getString(R.string.here)
+                    : diff.isEmpty() ? getString(R.string.same_time, reading.offset)
+                    : getString(R.string.hours_from_here, diff));
+            // Yesterday or tomorrow only where the day differs; the line keeps its height so cards line up
+            views.day.setText(reading.dayDifference == 1 ? getString(R.string.tomorrow)
                     : reading.dayDifference == -1 ? getString(R.string.yesterday)
+                    : reading.dayDifference == 0 ? " "
                     : getResources().getQuantityString(R.plurals.day_difference,
                             Math.abs(reading.dayDifference), reading.dayDifference));
-            views.day.setTextColor(reading.dayDifference == 0 ? MUTED : ACCENT);
+            views.sky = DayLight.colours(reading.hour);
+            views.glyph.set(DayLight.sunUp(reading.hour), views.sky[0]);
+            views.paint();
         }
     }
 
@@ -243,7 +260,10 @@ public final class ClockActivity extends Activity {
                 .setItems(labels.toArray(new String[0]), (d, which) -> actions.get(which).run()).create());
     }
 
-    private String cityLabel(String id) { return ClockModel.LOCAL.equals(id) ? getString(R.string.local) : ClockModel.city(id); }
+    /** The city in the TV's language ("Лондон"), from the system's own zone names; the TV's own zone for local. */
+    private String cityLabel(String id) {
+        return TimeZoneNamesCache.label(this, id);
+    }
 
     private void chooseFormat() {
         show(new AlertDialog.Builder(this).setTitle(R.string.clock_format)
@@ -308,7 +328,8 @@ public final class ClockActivity extends Activity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         list.setAdapter(adapter);
         Runnable filter = () -> {
-            matches.clear(); matches.addAll(ClockModel.search(catalogue, search.getText().toString(), ids, replacing));
+            matches.clear();
+            matches.addAll(ClockModel.search(catalogue, search.getText().toString(), ids, replacing, this::cityLabel));
             adapter.setNotifyOnChange(false);
             adapter.clear();
             for (String id : matches) adapter.add(cityLabel(id) + "  ·  " + ClockModel.area(id));
@@ -359,26 +380,47 @@ public final class ClockActivity extends Activity {
         next.show();
     }
 
+    /** One city: its sky as the background, the sun or moon in the corner, the time and how far it is from here. */
     private final class ClockViews {
         final String id;
-        final LinearLayout root;
+        final FrameLayout root;
         final TextView time, date, offset, day;
+        final SkyGlyph glyph;
+        int[] sky = DayLight.colours(12);
         ClockViews(String id) {
             this.id = id;
-            root = column(); root.setGravity(Gravity.CENTER);
-            root.setPadding(dp(12), dp(12), dp(12), dp(12));
-            root.setFocusable(true); root.setClickable(true); root.setBackground(focusBackground());
-            TextView city = text(cityLabel(id), 23, INK);
+            root = new FrameLayout(ClockActivity.this);
+            root.setFocusable(true); root.setClickable(true);
+            LinearLayout column = column(); column.setGravity(Gravity.CENTER);
+            column.setPadding(dp(14), dp(16), dp(14), dp(14));
+            root.addView(column, new FrameLayout.LayoutParams(-1, -1));
+            glyph = new SkyGlyph(ClockActivity.this);
+            FrameLayout.LayoutParams glyphParams = new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.TOP | Gravity.END);
+            glyphParams.setMargins(0, dp(12), dp(12), 0);
+            root.addView(glyph, glyphParams);
+            TextView city = text(cityLabel(id), 22, INK);
             city.setMaxLines(1); city.setGravity(Gravity.CENTER);
-            city.setAutoSizeTextTypeUniformWithConfiguration(16, 23, 1, TypedValue.COMPLEX_UNIT_SP);
-            root.addView(city, new LinearLayout.LayoutParams(-1, dp(34)));
+            city.setPadding(dp(30), 0, dp(30), 0);
+            city.setAutoSizeTextTypeUniformWithConfiguration(14, 22, 1, TypedValue.COMPLEX_UNIT_SP);
+            column.addView(city, new LinearLayout.LayoutParams(-1, dp(32)));
             time = text("", 64, INK); time.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
             time.setGravity(Gravity.CENTER); time.setMaxLines(1); time.setTextDirection(View.TEXT_DIRECTION_LTR);
             time.setAutoSizeTextTypeUniformWithConfiguration(18, 64, 2, TypedValue.COMPLEX_UNIT_SP);
-            root.addView(time, new LinearLayout.LayoutParams(-1, 0, 1));
-            date = text("", 17, INK); date.setGravity(Gravity.CENTER); root.addView(date);
-            day = text("", 13, MUTED); day.setGravity(Gravity.CENTER); root.addView(day);
-            offset = text("", 13, MUTED); offset.setGravity(Gravity.CENTER); root.addView(offset);
+            time.setShadowLayer(dp(8), 0, dp(1), 0x40000000);
+            column.addView(time, new LinearLayout.LayoutParams(-1, 0, 1));
+            date = text("", 17, INK); date.setGravity(Gravity.CENTER); column.addView(date);
+            offset = text("", 13, SOFT); offset.setGravity(Gravity.CENTER); column.addView(offset);
+            day = text(" ", 13, ACCENT); day.setGravity(Gravity.CENTER); column.addView(day);
+            paint();
+        }
+
+        /** The sky, rounded, with a white outline while focused. */
+        void paint() {
+            GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, sky);
+            bg.setCornerRadius(dp(18));
+            if (root.isFocused()) bg.setStroke(dp(3), INK);
+            else bg.setStroke(dp(1), 0x26FFFFFF);
+            root.setBackground(bg);
         }
     }
 
