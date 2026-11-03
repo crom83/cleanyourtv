@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.text.format.DateFormat;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -32,7 +33,7 @@ import java.util.concurrent.Executors;
  * does nothing in the background. The place is chosen once with a search and kept in the app's preferences.
  */
 public final class WeatherActivity extends Activity {
-    private static final String PREFS = "place";
+    static final String PREFS = "place";
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -43,6 +44,18 @@ public final class WeatherActivity extends Activity {
     private View content;
     private TextView message;
     private boolean shown;
+    /** Preview of every weather look, stepped with CH+ / CH-: -1 is the real weather. */
+    private int demo = -1;
+    /** The hour strip spans the row like the cards when they share it (four days or more). */
+    private boolean stripFull;
+
+    /** The forecast on screen, for the day screen (DayActivity) to read without another request. */
+    static volatile Forecast.Report current;
+    /** Hour strip: 8 cells, 3 hours apart. */
+    private static final int HOUR_CELLS = 8, HOUR_STEP = 3;
+    /** For each preview step: a WMO code and day (1) or night (0), one per WeatherIcon kind. */
+    private static final int[][] DEMO = {{0, 1}, {0, 0}, {2, 1}, {2, 0}, {3, 1}, {45, 1}, {53, 1}, {61, 1}, {63, 1},
+            {65, 1}, {66, 1}, {71, 1}, {73, 1}, {95, 1}};
     private boolean resumed;
     private int requestId;
     private int searchId; // City searches are independent of forecast refreshes.
@@ -66,10 +79,9 @@ public final class WeatherActivity extends Activity {
         root = findViewById(R.id.root);
         content = findViewById(R.id.content);
         message = findViewById(R.id.message);
-        View changeCity = findViewById(R.id.changeCity);
-        changeCity.setOnClickListener(v -> pickCity());
-        findViewById(R.id.weatherSettings).setOnClickListener(v -> settings());
-        changeCity.requestFocus();
+        View gear = findViewById(R.id.weatherSettings);
+        gear.setOnClickListener(v -> settings());
+        gear.requestFocus();
         if (!place.contains("name")) {
             message.setText(R.string.pick_first);
             pickCity();
@@ -128,10 +140,13 @@ public final class WeatherActivity extends Activity {
 
     private void show(Forecast.Report r) {
         shown = true;
+        current = r;
         root.setBackground(Forecast.backdrop(r.code, r.day));
         ((TextView) findViewById(R.id.place)).setText(place.getString("name", ""));
         ((TextView) findViewById(R.id.temp)).setText(Forecast.degrees(r.tempC, fahrenheit) + "°");
         ((TextView) findViewById(R.id.sky)).setText(Forecast.sky(r.code, r.day));
+        ((WeatherIcon) findViewById(R.id.skyIcon)).setKind(Forecast.icon(r.code, r.day));
+        ((WeatherBackdrop) findViewById(R.id.backdrop)).setKind(Forecast.icon(r.code, r.day));
         StringBuilder feels = new StringBuilder();
         if (bothUnits) {
             feels.append(getString(fahrenheit ? R.string.other_unit_c : R.string.other_unit_f,
@@ -161,17 +176,24 @@ public final class WeatherActivity extends Activity {
         LinearLayout days = findViewById(R.id.days);
         days.removeAllViews();
         LayoutInflater inflater = getLayoutInflater();
-        // More than three days: the cards share the row, with short day names, so a week fits on screen.
+        // More than three days: the cards share the row. Five or more also get short day names and smaller text,
+        // so a week fits on screen; four still have room for the full look.
         int count = Math.min(forecastDays, r.days.size());
-        boolean compact = count > Forecast.MIN_DAYS;
-        days.getLayoutParams().width = compact ? LinearLayout.LayoutParams.MATCH_PARENT
+        boolean share = count > Forecast.MIN_DAYS;
+        boolean compact = count > Forecast.MIN_DAYS + 1;
+        days.getLayoutParams().width = share ? LinearLayout.LayoutParams.MATCH_PARENT
                 : LinearLayout.LayoutParams.WRAP_CONTENT;
+        stripFull = share;
         for (int i = 0; i < count; i++) {
             Forecast.Day d = r.days.get(i);
             View card = inflater.inflate(R.layout.item_day, days, false);
             ((TextView) card.findViewById(R.id.dayName)).setText(d.date.getDayOfWeek()
                     .getDisplayName(compact ? TextStyle.SHORT : TextStyle.FULL, Locale.getDefault()));
+            // The date as numbers in the language's own order: 05.11 in Russian, 11/5 in English
+            ((TextView) card.findViewById(R.id.dayDate)).setText(d.date.format(java.time.format.DateTimeFormatter
+                    .ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "ddMM"), Locale.getDefault())));
             ((TextView) card.findViewById(R.id.daySky)).setText(Forecast.sky(d.code, true));
+            ((WeatherIcon) card.findViewById(R.id.dayIcon)).setKind(Forecast.icon(d.code, true));
             TextView temps = card.findViewById(R.id.dayTemps);
             temps.setText(getString(R.string.high_low, Forecast.degrees(d.maxC, fahrenheit),
                     Forecast.degrees(d.minC, fahrenheit)));
@@ -183,12 +205,22 @@ public final class WeatherActivity extends Activity {
                 sky.setSingleLine(false);   // "Partly cloudy" on two lines rather than cut; every card two lines tall
                 sky.setLines(2);
                 temps.setTextSize(21);
+            }
+            if (share) {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
                 lp.setMarginEnd(i < count - 1 ? Math.round(12 * getResources().getDisplayMetrics().density) : 0);
                 card.setLayoutParams(lp);
             }
+            // The row's ends stop Left/Right, so focus doesn't jump to the gear
+            card.setId(View.generateViewId());
+            if (i == 0) card.setNextFocusLeftId(card.getId());
+            if (i == count - 1) card.setNextFocusRightId(card.getId());
+            java.time.LocalDate date = d.date;
+            card.setOnClickListener(v -> startActivity(new android.content.Intent(this, DayActivity.class)
+                    .putExtra(DayActivity.EXTRA_DATE, date.toString())));
             days.addView(card);
         }
+        showHours(r);
 
         ((TextView) findViewById(R.id.updated))
                 .setText(getString(R.string.updated, DateFormat.getTimeFormat(this).format(updatedAt)));
@@ -207,6 +239,11 @@ public final class WeatherActivity extends Activity {
 
     private String optionRow(int label, boolean enabled) {
         return getString(R.string.setting_value, getString(label), getString(enabled ? R.string.option_on : R.string.option_off));
+    }
+
+    /** First row of the settings: "City · Ulaanbaatar". */
+    private String cityRow() {
+        return getString(R.string.setting_value, getString(R.string.setting_city), place.getString("name", ""));
     }
 
     private String[] optionRows() {
@@ -231,6 +268,7 @@ public final class WeatherActivity extends Activity {
         int initialDays = forecastDays;
         // The array overload uses a fixed-size list; saved changes must be able to replace its rows.
         ArrayAdapter<String> rows = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        rows.add(cityRow());
         rows.addAll(optionRows());
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.weather_settings)
@@ -241,6 +279,7 @@ public final class WeatherActivity extends Activity {
             readOptions();
             rows.setNotifyOnChange(false);
             rows.clear();
+            rows.add(cityRow());
             rows.addAll(optionRows());
             rows.notifyDataSetChanged();
             if (lastReport != null) show(lastReport); // Display choices do not make another network request.
@@ -249,7 +288,13 @@ public final class WeatherActivity extends Activity {
             if (forecastDays != initialDays) refresh(); // One fetch after all choices, including Back.
         });
         dialog.show();
-        dialog.getListView().setOnItemClickListener((parent, view, position, id) -> {
+        dialog.getListView().setOnItemClickListener((parent, view, row, id) -> {
+            if (row == 0) {   // the city: the same search as before, the settings close behind it
+                dialog.dismiss();
+                pickCity();
+                return;
+            }
+            int position = row - 1;   // the options below the city row
             if (position == 0) {
                 new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                         .setTitle(R.string.setting_units)
@@ -364,4 +409,65 @@ public final class WeatherActivity extends Activity {
                 })
                 .show();
     }
+
+    /** CH+ / CH- step through every weather look (main icon, background, words), then back to the real weather. */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        int d = keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_PAGE_UP ? 1
+                : keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN || keyCode == KeyEvent.KEYCODE_PAGE_DOWN ? -1 : 0;
+        if (d == 0 || !shown) return super.onKeyDown(keyCode, event);
+        demo += d;
+        if (demo >= DEMO.length) demo = -1;
+        if (demo < -1) demo = DEMO.length - 1;
+        if (demo < 0) {
+            if (lastReport != null) show(lastReport);
+            return true;
+        }
+        int code = DEMO[demo][0];
+        boolean day = DEMO[demo][1] == 1;
+        root.setBackground(Forecast.backdrop(code, day));
+        ((WeatherIcon) findViewById(R.id.skyIcon)).setKind(Forecast.icon(code, day));
+        ((WeatherBackdrop) findViewById(R.id.backdrop)).setKind(Forecast.icon(code, day));
+        ((TextView) findViewById(R.id.sky)).setText(getString(R.string.demo_label, getString(Forecast.sky(code, day)),
+                demo + 1, DEMO.length));
+        return true;
+    }
+
+    /** The hour strip: the next 24 hours from the whole hour, every 3 hours. */
+    private void showHours(Forecast.Report r) {
+        LinearLayout row = findViewById(R.id.hours);
+        row.removeAllViews();
+        row.getLayoutParams().width = stripFull ? LinearLayout.LayoutParams.MATCH_PARENT
+                : LinearLayout.LayoutParams.WRAP_CONTENT;
+        java.time.LocalDateTime from = java.time.LocalDateTime.now().withMinute(0).withSecond(0).withNano(0);
+        List<Forecast.Hour> hours = Forecast.strip(r.hours, from, HOUR_CELLS, HOUR_STEP);
+        // Today's date goes after the city in the top line
+        String date = java.time.LocalDate.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault()));
+        ((TextView) findViewById(R.id.place)).setText(getString(R.string.place_date, place.getString("name", ""), date));
+        row.setVisibility(hours.isEmpty() ? View.GONE : View.VISIBLE);
+        if (hours.isEmpty()) return;
+        java.time.format.DateTimeFormatter clock = java.time.format.DateTimeFormatter.ofPattern(
+                DateFormat.is24HourFormat(this) ? "HH:mm" : "h a", Locale.getDefault());
+        boolean anyRain = false;
+        for (Forecast.Hour h : hours) anyRain |= h.precip >= 20;
+        LayoutInflater inflater = getLayoutInflater();
+        for (Forecast.Hour h : hours) {
+            View cell = inflater.inflate(R.layout.item_hour, row, false);
+            ((TextView) cell.findViewById(R.id.hourTime)).setText(h.time.format(clock));
+            ((WeatherIcon) cell.findViewById(R.id.hourIcon)).setKind(Forecast.icon(h.code, h.day));
+            ((TextView) cell.findViewById(R.id.hourTemp)).setText(Forecast.degrees(h.tempC, fahrenheit) + "°");
+            TextView rain = cell.findViewById(R.id.hourRain);
+            // The chance of rain only where it matters; MET Norway gives none (-1) for this region
+            rain.setText(h.precip >= 20 ? getString(R.string.hour_rain, h.precip) : " ");
+            // the line keeps its height when nothing is likely to fall, so the cards don't move between days
+            rain.setVisibility(anyRain ? View.VISIBLE : View.INVISIBLE);
+            if (stripFull) {
+                row.addView(cell, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            } else {
+                row.addView(cell);
+            }
+        }
+    }
+
 }

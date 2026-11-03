@@ -10,10 +10,11 @@
     <string name="other_unit_f">%1$d°F</string>
     <string name="high_low">%1$d° / %2$d°</string>
     <string name="aqi_line">Air quality %1$d · %2$s</string>
-    <string name="updated">Updated %1$s · Open-Meteo</string>
+    <string name="updated">Updated %1$s · Open-Meteo / MET Norway</string>
     <string name="change_city">Change city</string>
     <string name="weather_settings">Weather settings</string>
     <string name="settings_done">Done</string>
+    <string name="setting_city">City</string>
     <string name="setting_units">Temperature units</string>
     <string name="unit_c">Celsius (°C)</string>
     <string name="unit_f">Fahrenheit (°F)</string>
@@ -30,7 +31,7 @@
     <string name="option_on">On</string>
     <string name="option_off">Off</string>
     <string name="loading">Loading the weather…</string>
-    <string name="offline">Can\'t reach Open-Meteo. Check the TV\'s internet connection; it tries again in 5 minutes.</string>
+    <string name="offline">Can\'t reach Open-Meteo or MET Norway. Check the TV\'s internet connection; it tries again in 5 minutes.</string>
 
     <string name="pick_title">Which city?</string>
     <string name="pick_hint">City name, e.g. Ulaanbaatar</string>
@@ -44,6 +45,9 @@
     <string name="aqi_unhealthy">Unhealthy</string>
     <string name="aqi_very_unhealthy">Very unhealthy</string>
     <string name="aqi_hazardous">Hazardous</string>
+
+    <!-- CH+ / CH- preview of every weather look: the words, then the step -->
+    <string name="demo_label" translatable="false">%1$s · %2$d/%3$d</string>
 
     <string name="sky_clear">Clear</string>
     <string name="sky_sunny">Sunny</string>
@@ -65,4 +69,6 @@
     <string name="sky_showers">Showers</string>
     <string name="sky_snow_showers">Snow showers</string>
     <string name="sky_thunderstorm">Thunderstorm</string>
+    <string name="place_date" translatable="false">%1$s · %2$s</string>
+    <string name="hour_rain" translatable="false">%1$d%%</string>
 </resources>

@@ -2,6 +2,7 @@
 <resources>
     <string name="weather_settings">Impostazioni meteo</string>
     <string name="settings_done">Fine</string>
+    <string name="setting_city">Città</string>
     <string name="setting_units">Unità di temperatura</string>
     <string name="unit_c">Celsius (°C)</string>
     <string name="unit_f">Fahrenheit (°F)</string>

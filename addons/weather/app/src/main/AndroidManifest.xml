@@ -30,5 +30,11 @@
             </intent-filter>
             <meta-data android:name="com.gathin.tvhome.card" android:resource="@xml/module_card" />
         </activity>
+
+        <!-- One forecast day with its hours, opened with OK on a day card -->
+        <activity
+            android:name=".DayActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
     </application>
 </manifest>

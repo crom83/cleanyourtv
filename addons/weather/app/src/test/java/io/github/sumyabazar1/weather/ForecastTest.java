@@ -79,4 +79,34 @@ public class ForecastTest {
         assertEquals(10, Forecast.mph(16));
         assertEquals(62, Forecast.mph(100));
     }
+
+    @Test
+    public void iconFollowsTheCode() {
+        assertEquals(WeatherIcon.SUN, Forecast.icon(0, true));
+        assertEquals(WeatherIcon.MOON, Forecast.icon(1, false));
+        assertEquals(WeatherIcon.PARTLY_DAY, Forecast.icon(2, true));
+        assertEquals(WeatherIcon.CLOUD, Forecast.icon(3, true));
+        assertEquals(WeatherIcon.LIGHT_RAIN, Forecast.icon(61, true));
+        assertEquals(WeatherIcon.HEAVY_RAIN, Forecast.icon(82, true));
+        assertEquals(WeatherIcon.SNOW, Forecast.icon(73, true));
+        assertEquals(WeatherIcon.SLEET, Forecast.icon(66, true));
+        assertEquals(WeatherIcon.FOG, Forecast.icon(45, true));
+        assertEquals(WeatherIcon.THUNDER, Forecast.icon(96, true));
+    }
+
+    @Test
+    public void stripEveryThreeHours() {
+        java.util.List<Forecast.Hour> all = new java.util.ArrayList<>();
+        java.time.LocalDateTime t0 = java.time.LocalDateTime.of(2026, 11, 3, 0, 0);
+        for (int i = 0; i < 60; i++) all.add(new Forecast.Hour(t0.plusHours(i), i, 3, true, -1));
+        for (int i = 66; i < 120; i += 6) all.add(new Forecast.Hour(t0.plusHours(i), i, 3, true, -1));
+        java.util.List<Forecast.Hour> s = Forecast.strip(all, t0.plusHours(14), 8, 3);
+        assertEquals(8, s.size());
+        assertEquals(14.0, s.get(0).tempC, 0);
+        assertEquals(35.0, s.get(7).tempC, 0);
+        // past 60 h only 6-hourly readings: each 3-hour step takes the nearest within 1.5 h, no repeats
+        java.util.List<Forecast.Hour> late = Forecast.strip(all, t0.plusHours(72), 8, 3);
+        assertEquals(4, late.size());
+        assertEquals(72.0, late.get(0).tempC, 0);
+    }
 }

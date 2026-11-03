@@ -64,6 +64,8 @@ final class Forecast {
         final int aqi;
         final int humidity;
         final int windKmh;
+        /** Hour by hour, local time, as far as the source goes (Open-Meteo: every hour; MET Norway: hourly, then 6-hourly). */
+        List<Hour> hours = new ArrayList<>();
 
         Report(double tempC, double feelsC, int code, boolean day, List<Day> days, int aqi, int humidity, int windKmh) {
             this.tempC = tempC;
@@ -90,6 +92,46 @@ final class Forecast {
             this.maxC = maxC;
             this.minC = minC;
         }
+    }
+
+    /** One hour of the forecast: local time, degrees Celsius, WMO code, day or night, chance of precipitation (or -1). */
+    static final class Hour {
+        final java.time.LocalDateTime time;
+        final double tempC;
+        final int code;
+        final boolean day;
+        final int precip;
+
+        Hour(java.time.LocalDateTime time, double tempC, int code, boolean day, int precip) {
+            this.time = time;
+            this.tempC = tempC;
+            this.code = code;
+            this.day = day;
+            this.precip = precip;
+        }
+    }
+
+    /**
+     * The hours for the strip: {@code count} steps of {@code step} hours from {@code from}, each the reading at that
+     * hour or the nearest one within half a step (MET Norway goes 6-hourly after two and a half days). A step with
+     * nothing near is left out.
+     */
+    static List<Hour> strip(List<Hour> all, java.time.LocalDateTime from, int count, int step) {
+        List<Hour> out = new ArrayList<>();
+        for (int k = 0; k < count; k++) {
+            java.time.LocalDateTime at = from.plusHours((long) k * step);
+            Hour best = null;
+            long bestGap = Long.MAX_VALUE;
+            for (Hour h : all) {
+                long gap = Math.abs(java.time.Duration.between(at, h.time).toMinutes());
+                if (gap < bestGap) {
+                    bestGap = gap;
+                    best = h;
+                }
+            }
+            if (best != null && bestGap <= step * 30L && (out.isEmpty() || out.get(out.size() - 1) != best)) out.add(best);
+        }
+        return out;
     }
 
     /** Up to five places matching what was typed, best match first. Empty when nothing matches. */
@@ -119,21 +161,53 @@ final class Forecast {
      * service: if it fails, aqi is -1.
      */
     static Report fetch(double latitude, double longitude, int days) throws IOException, JSONException {
+        try {
+            return fetchOpenMeteo(latitude, longitude, days);
+        } catch (IOException | JSONException e) {
+            // Fallback: Open-Meteo is sometimes overloaded (HTTP 503).
+            return fetchMetNo(latitude, longitude, days);
+        }
+    }
+
+    private static Report fetchOpenMeteo(double latitude, double longitude, int days) throws IOException, JSONException {
         String where = String.format(Locale.ROOT, "latitude=%.4f&longitude=%.4f", latitude, longitude);
         // DWD's ICON model: Open-Meteo's default blend called light snow over Ulaanbaatar "overcast" while ICON,
         // and Google, had snow falling.
         JSONObject reply = get("https://api.open-meteo.com/v1/forecast?" + where + "&models=icon_seamless"
                 + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,is_day,wind_speed_10m"
-                + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days="
-                + (forecastDays(days) + 1));
+                + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+                + "&hourly=temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,is_day"
+                + "&timezone=auto&forecast_days=" + (forecastDays(days) + 1));
         JSONObject current = reply.getJSONObject("current");
         double temp = current.getDouble("temperature_2m");
         double humidity = current.getDouble("relative_humidity_2m");
         int code = snowIfCold(current.getInt("weather_code"), temp, humidity);
-        return new Report(temp, current.getDouble("apparent_temperature"),
+        Report r = new Report(temp, current.getDouble("apparent_temperature"),
                 code, current.getInt("is_day") == 1,
                 days(reply.getJSONObject("daily")), aqiOrUnknown(where),
                 (int) Math.round(humidity), (int) Math.round(current.optDouble("wind_speed_10m", 0)));
+        JSONObject hourly = reply.optJSONObject("hourly");
+        if (hourly != null) r.hours = hours(hourly);
+        return r;
+    }
+
+    /** Open-Meteo's hourly block, local time (timezone=auto). */
+    static List<Hour> hours(JSONObject hourly) throws JSONException {
+        JSONArray time = hourly.getJSONArray("time");
+        JSONArray temp = hourly.getJSONArray("temperature_2m");
+        JSONArray code = hourly.getJSONArray("weather_code");
+        JSONArray rh = hourly.optJSONArray("relative_humidity_2m");
+        JSONArray pop = hourly.optJSONArray("precipitation_probability");
+        JSONArray isDay = hourly.optJSONArray("is_day");
+        List<Hour> out = new ArrayList<>();
+        for (int i = 0; i < time.length(); i++) {
+            if (temp.isNull(i) || code.isNull(i)) continue;
+            double t = temp.getDouble(i);
+            double h = rh == null || rh.isNull(i) ? 100 : rh.getDouble(i);
+            out.add(new Hour(java.time.LocalDateTime.parse(time.getString(i)), t, snowIfCold(code.getInt(i), t, h),
+                    isDay == null || isDay.optInt(i, 1) == 1, pop == null || pop.isNull(i) ? -1 : pop.getInt(i)));
+        }
+        return out;
     }
 
     /**
@@ -190,6 +264,7 @@ final class Forecast {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setConnectTimeout(TIMEOUT_MS);
         connection.setReadTimeout(TIMEOUT_MS);
+        connection.setRequestProperty("User-Agent", "cleanyourtv-weather/1.0 github.com/Gathin23/cleanyourtv");
         try (InputStream in = connection.getInputStream()) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buffer = new byte[4096];
@@ -208,6 +283,109 @@ final class Forecast {
     /** Whole miles per hour from km/h. */
     static int mph(int kmh) {
         return (int) Math.round(kmh / 1.609344);
+    }
+
+    // ---- MET Norway (api.met.no), the fallback source -----------------------------------------------
+
+    /** MET Norway's forecast as the same Report: WMO codes, km/h, days by the TV's time zone. */
+    private static Report fetchMetNo(double latitude, double longitude, int days) throws IOException, JSONException {
+        JSONArray series = get(String.format(Locale.ROOT,
+                "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.4f&lon=%.4f", latitude, longitude))
+                .getJSONObject("properties").getJSONArray("timeseries");
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        JSONObject first = series.getJSONObject(0).getJSONObject("data");
+        JSONObject now = first.getJSONObject("instant").getJSONObject("details");
+        double temp = now.getDouble("air_temperature");
+        double humidity = now.optDouble("relative_humidity", 70);
+        double windMs = now.optDouble("wind_speed", 0);
+        String symbol = symbolOf(first, "next_1_hours");
+        if (symbol == null) symbol = symbolOf(first, "next_6_hours");
+        java.time.ZonedDateTime at = java.time.Instant.parse(series.getJSONObject(0).getString("time")).atZone(zone);
+        boolean day = symbol != null && (symbol.endsWith("_day") || symbol.endsWith("_polartwilight"))
+                || symbol != null && !symbol.contains("_") && at.getHour() >= 7 && at.getHour() < 19;
+        int code = snowIfCold(wmo(symbol), temp, humidity);
+
+        LocalDate today = at.toLocalDate();
+        int wanted = forecastDays(days);
+        java.util.TreeMap<LocalDate, double[]> range = new java.util.TreeMap<>(); // min, max, number of readings
+        java.util.Map<LocalDate, String> noon = new java.util.HashMap<>();
+        java.util.Map<LocalDate, Integer> noonGap = new java.util.HashMap<>();
+        List<Hour> hourList = new ArrayList<>();
+        for (int i = 0; i < series.length(); i++) {
+            JSONObject entry = series.getJSONObject(i);
+            java.time.ZonedDateTime t = java.time.Instant.parse(entry.getString("time")).atZone(zone);
+            LocalDate date = t.toLocalDate();
+            JSONObject hd = entry.getJSONObject("data");
+            String hs = symbolOf(hd, "next_1_hours");
+            if (hs == null) hs = symbolOf(hd, "next_6_hours");
+            if (hs != null) {
+                JSONObject det = hd.getJSONObject("instant").getJSONObject("details");
+                double ht = det.getDouble("air_temperature");
+                hourList.add(new Hour(t.toLocalDateTime(), ht, snowIfCold(wmo(hs), ht, det.optDouble("relative_humidity", 100)),
+                        !hs.endsWith("_night"), -1));
+            }
+            if (!date.isAfter(today) || date.isAfter(today.plusDays(wanted))) continue;
+            JSONObject data = entry.getJSONObject("data");
+            double v = data.getJSONObject("instant").getJSONObject("details").getDouble("air_temperature");
+            double[] r = range.get(date);
+            if (r == null) range.put(date, new double[]{v, v, 1});
+            else { r[0] = Math.min(r[0], v); r[1] = Math.max(r[1], v); r[2]++; }
+            String s6 = symbolOf(data, "next_6_hours");
+            int gap = Math.abs(t.getHour() - 12);
+            if (s6 != null && (!noonGap.containsKey(date) || gap < noonGap.get(date))) {
+                noon.put(date, s6);
+                noonGap.put(date, gap);
+            }
+        }
+        List<Day> out = new ArrayList<>();
+        for (java.util.Map.Entry<LocalDate, double[]> e : range.entrySet()) {
+            double[] r = e.getValue();
+            if (r[2] < 3) break; // the forecast's tail without a full day
+            out.add(new Day(e.getKey(), snowIfCold(wmo(noon.get(e.getKey())), r[1], 100), r[1], r[0]));
+        }
+        String where = String.format(Locale.ROOT, "latitude=%.4f&longitude=%.4f", latitude, longitude);
+        Report rep = new Report(temp, apparent(temp, humidity, windMs), code, day, out, aqiOrUnknown(where),
+                (int) Math.round(humidity), (int) Math.round(windMs * 3.6));
+        rep.hours = hourList;
+        return rep;
+    }
+
+    private static String symbolOf(JSONObject data, String period) {
+        JSONObject p = data.optJSONObject(period);
+        JSONObject summary = p == null ? null : p.optJSONObject("summary");
+        return summary == null ? null : summary.optString("symbol_code", null);
+    }
+
+    /** Feels-like temperature by the Australian BoM formula (as Open-Meteo works it out). */
+    static double apparent(double t, double rh, double windMs) {
+        double e = rh / 100 * 6.105 * Math.exp(17.27 * t / (237.7 + t));
+        return t + 0.33 * e - 0.70 * windMs - 4.00;
+    }
+
+    /** MET Norway's symbol_code as the WMO code the rest of the app understands. */
+    static int wmo(String symbol) {
+        if (symbol == null) return 3;
+        String s = symbol.replaceAll("_(day|night|polartwilight)$", "");
+        if (s.contains("thunder")) return 95;
+        switch (s) {
+            case "clearsky": return 0;
+            case "fair": return 1;
+            case "partlycloudy": return 2;
+            case "cloudy": return 3;
+            case "fog": return 45;
+            case "lightrain": case "lightsleet": return 61;
+            case "rain": case "sleet": return 63;
+            case "heavyrain": case "heavysleet": return 65;
+            case "lightrainshowers": case "lightsleetshowers": return 80;
+            case "rainshowers": case "sleetshowers": return 81;
+            case "heavyrainshowers": case "heavysleetshowers": return 82;
+            case "lightsnow": return 71;
+            case "snow": return 73;
+            case "heavysnow": return 75;
+            case "lightsnowshowers": return 85;
+            case "snowshowers": case "heavysnowshowers": return 86;
+            default: return 3;
+        }
     }
 
     // ---- words and colours -------------------------------------------------------------------------
@@ -233,6 +411,24 @@ final class Forecast {
             case 80: case 81: case 82: return R.string.sky_showers;
             case 85: case 86: return R.string.sky_snow_showers;
             default: return code >= 95 ? R.string.sky_thunderstorm : R.string.sky_cloudy;
+        }
+    }
+
+    /** The animated icon for a WMO weather code (a {@link WeatherIcon} kind), matching {@link #sky}. */
+    static int icon(int code, boolean day) {
+        switch (code) {
+            case 0: case 1: return day ? WeatherIcon.SUN : WeatherIcon.MOON;
+            case 2: return day ? WeatherIcon.PARTLY_DAY : WeatherIcon.PARTLY_NIGHT;
+            case 3: return WeatherIcon.CLOUD;
+            case 45: case 48: return WeatherIcon.FOG;
+            case 51: case 53: case 55: return WeatherIcon.DRIZZLE;
+            case 56: case 57: case 66: case 67: return WeatherIcon.SLEET;
+            case 61: case 80: return WeatherIcon.LIGHT_RAIN;
+            case 63: case 81: return WeatherIcon.RAIN;
+            case 65: case 82: return WeatherIcon.HEAVY_RAIN;
+            case 71: case 85: return WeatherIcon.LIGHT_SNOW;
+            case 73: case 75: case 77: case 86: return WeatherIcon.SNOW;
+            default: return code >= 95 ? WeatherIcon.THUNDER : WeatherIcon.CLOUD;
         }
     }
 
@@ -267,15 +463,15 @@ final class Forecast {
         if (code <= 1) {
             colours = day ? new int[]{0xFF2A6AA8, 0xFF0A1626} : new int[]{0xFF0D1B3E, 0xFF020308};
         } else if (code == 45 || code == 48) {
-            colours = new int[]{0xFF5A6068, 0xFF101113};
+            colours = day ? new int[]{0xFF5A6068, 0xFF101113} : new int[]{0xFF33373C, 0xFF0A0A0B};
         } else if ((code >= 71 && code <= 77) || code == 85 || code == 86) {
-            colours = new int[]{0xFF6F8497, 0xFF101820};
+            colours = day ? new int[]{0xFF6F8497, 0xFF101820} : new int[]{0xFF3E4C59, 0xFF0A0F14};
         } else if (code >= 95) {
             colours = new int[]{0xFF2D2140, 0xFF07050C};
         } else if (code >= 51) {
-            colours = new int[]{0xFF1E2C3D, 0xFF06090E};
+            colours = day ? new int[]{0xFF1E2C3D, 0xFF06090E} : new int[]{0xFF121B26, 0xFF030507};
         } else {
-            colours = new int[]{0xFF3B4654, 0xFF0C0F14};
+            colours = day ? new int[]{0xFF3B4654, 0xFF0C0F14} : new int[]{0xFF242B33, 0xFF07090B};
         }
         return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colours);
     }
