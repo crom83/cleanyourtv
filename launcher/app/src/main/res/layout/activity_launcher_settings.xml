@@ -167,6 +167,25 @@
             android:textColor="#FFACB8C1"
             android:textSize="14sp" />
 
+        <!-- Screensaver (local patch): which one and after how long -->
+        <TextView
+            android:id="@+id/screensaverChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp" />
+
+        <TextView
+            android:id="@+id/screensaverDelayChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/screensaverHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#FFACB8C1"
+            android:textSize="14sp" />
+
         <TextView
             android:id="@+id/openOnStartChoice"
             style="@style/SettingsRow"

@@ -42,6 +42,8 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView liveCardsChoice;
+    private TextView screensaverChoice;
+    private TextView screensaverDelayChoice;
     private boolean liveCards;
     private TextView followThemeChoice;
     private TextView openOnStartChoice;
@@ -166,6 +168,12 @@ public final class LauncherSettingsActivity extends Activity {
             changed();
             refresh();
         });
+        screensaverChoice = findViewById(R.id.screensaverChoice);
+        screensaverDelayChoice = findViewById(R.id.screensaverDelayChoice);
+        ((TextView) findViewById(R.id.screensaverHint)).setText(Screensaver.canWrite(this)
+                ? R.string.screensaver_hint : R.string.screensaver_hint_system);
+        screensaverChoice.setOnClickListener(v -> pickScreensaver());
+        screensaverDelayChoice.setOnClickListener(v -> pickScreensaverDelay());
         advancedChoice = findViewById(R.id.advancedChoice);
         advancedChoice.setOnClickListener(v -> {
             if (advancedEffects) {
@@ -314,6 +322,71 @@ public final class LauncherSettingsActivity extends Activity {
      * A choice was saved. Home rebuilds when it next resumes because the change count moved, whether these
      * settings are left with Back or with the remote's Home button (which cancels the activity result).
      */
+    /** The screensaver in use by name, "Off", or its class name when it is not installed any more. */
+    private String screensaverName() {
+        android.content.ComponentName now = Screensaver.current(this);
+        if (now == null) return getString(R.string.screensaver_off);
+        for (Screensaver.Dream d : Screensaver.installed(this)) if (d.component.equals(now)) return d.label;
+        return now.getShortClassName();
+    }
+
+    /** Off, then every installed screensaver; the current one is checked. */
+    private void pickScreensaver() {
+        if (!Screensaver.canWrite(this)) {
+            if (!Screensaver.openSystem(this)) Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<Screensaver.Dream> dreams = Screensaver.installed(this);
+        android.content.ComponentName now = Screensaver.current(this);
+        String[] labels = new String[dreams.size() + 1];
+        labels[0] = getString(R.string.screensaver_off);
+        int checked = 0;
+        for (int i = 0; i < dreams.size(); i++) {
+            labels[i + 1] = dreams.get(i).label;
+            if (dreams.get(i).component.equals(now)) checked = i + 1;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.screensaver_title)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    try {
+                        Screensaver.set(this, which == 0 ? null : dreams.get(which - 1).component);
+                    } catch (SecurityException e) {
+                        Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+                    }
+                    d.dismiss();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void pickScreensaverDelay() {
+        if (!Screensaver.canWrite(this)) {
+            if (!Screensaver.openSystem(this)) Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+            return;
+        }
+        int now = Screensaver.minutes(this);
+        String[] labels = new String[Screensaver.MINUTES.length];
+        int checked = -1;
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = getString(R.string.minutes_short, Screensaver.MINUTES[i]);
+            if (Screensaver.MINUTES[i] == now) checked = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.screensaver_delay_title)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    try {
+                        Screensaver.setMinutes(this, Screensaver.MINUTES[which]);
+                    } catch (SecurityException e) {
+                        Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+                    }
+                    d.dismiss();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void changed() {
         setResult(RESULT_OK);
         choices.edit().putLong(Config.SETTINGS_REVISION_KEY,
@@ -348,6 +421,10 @@ public final class LauncherSettingsActivity extends Activity {
         advancedChoice.setText(getString(R.string.advanced_effects_state,
                 getString(advancedEffects ? R.string.on : R.string.off)));
         liveCardsChoice.setText(getString(R.string.live_cards_state, getString(liveCards ? R.string.on : R.string.off)));
+        screensaverChoice.setText(getString(R.string.screensaver_state, screensaverName()));
+        int minutes = Screensaver.minutes(this);
+        screensaverDelayChoice.setText(getString(R.string.screensaver_delay_state,
+                minutes > 0 ? getString(R.string.minutes_short, minutes) : "—"));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);

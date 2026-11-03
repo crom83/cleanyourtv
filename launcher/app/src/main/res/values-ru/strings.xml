@@ -110,6 +110,15 @@
     <string name="app_library">Библиотека приложений</string>
     <string name="live_cards_state">Живые плитки: %1$s</string>
     <string name="live_cards_hint">Аддоны вроде погоды показывают на своей плитке короткую строку, пока открыт главный экран. Выключено: память не тратится, ни один аддон ради главного экрана не запускается.</string>
+    <string name="screensaver_state">Заставка: %1$s</string>
+    <string name="screensaver_delay_state">Заставка через: %1$s</string>
+    <string name="screensaver_title">Заставка</string>
+    <string name="screensaver_delay_title">Заставка через</string>
+    <string name="screensaver_off">Выключена</string>
+    <string name="minutes_short">%1$d мин</string>
+    <string name="screensaver_hint">Что показывать, когда телевизор лежит без дела, и через сколько. В настройках ТВ будет то же самое.</string>
+    <string name="screensaver_hint_system">Что показывать, когда телевизор лежит без дела. Откроет настройки заставки ТВ: здесь лаунчеру не разрешено менять их самому.</string>
+    <string name="screensaver_no_settings">Этот ТВ не даёт лаунчеру менять заставку.</string>
     <string name="clean_button">Выгрузить фоновые приложения</string>
     <string name="clean_freed">Освобождено %1$d МБ · свободно %2$d МБ</string>
     <string name="library_empty">Нет приложений для запуска</string>

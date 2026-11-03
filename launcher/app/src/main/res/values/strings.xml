@@ -114,6 +114,16 @@
     <!-- Live tiles (local patch, live_cards) -->
     <string name="live_cards_state">Live tiles: %1$s</string>
     <string name="live_cards_hint">Add-ons such as the weather put a short line on their tile while Home is open. Off saves memory: no add-on is started for Home.</string>
+    <!-- Screensaver (local patch) -->
+    <string name="screensaver_state">Screensaver: %1$s</string>
+    <string name="screensaver_delay_state">Screensaver after: %1$s</string>
+    <string name="screensaver_title">Screensaver</string>
+    <string name="screensaver_delay_title">Screensaver after</string>
+    <string name="screensaver_off">Off</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="screensaver_hint">What the TV shows when it sits idle, and after how long. The TV\'s own settings show the same choice.</string>
+    <string name="screensaver_hint_system">What the TV shows when it sits idle. Opens the TV\'s screensaver settings: the launcher may not change them itself here.</string>
+    <string name="screensaver_no_settings">This TV doesn\'t let the launcher change its screensaver.</string>
     <!-- Broom button (local patch, clean_button) -->
     <string name="clean_button">Unload background apps</string>
     <string name="clean_freed">Freed %1$d MB · %2$d MB free</string>
