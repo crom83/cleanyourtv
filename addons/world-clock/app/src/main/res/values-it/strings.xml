@@ -21,7 +21,7 @@
         <item quantity="many">%1$+d giorni rispetto all’ora locale</item>
         <item quantity="other">%1$+d giorni rispetto all’ora locale</item>
     </plurals>
-    <string name="controls">Frecce per spostarti · OK per le opzioni della città · Indietro per tornare</string>
+    <string name="controls">Frecce per spostarti · OK apre la città · tieni premuto OK per le opzioni · Indietro per tornare</string>
     <string name="format_system">Usa l’impostazione della TV</string>
     <string name="format_12">Ora a 12 ore</string>
     <string name="format_24">Ora a 24 ore</string>
@@ -49,4 +49,9 @@
     <string name="here">qui</string>
     <string name="hours_from_here">%1$s h da qui</string>
     <string name="same_time">stessa ora · %1$s</string>
+    <string name="city_hint">◀ ▶ altre città · Indietro per l\'elenco</string>
+    <string name="city_sun">Alba %1$s · tramonto %2$s</string>
+    <string name="city_polar_day">Oggi il sole non tramonta</string>
+    <string name="city_polar_night">Oggi il sole non sorge</string>
+    <string name="city_photo_credit">Foto: %1$s · Wikimedia Commons</string>
 </resources>

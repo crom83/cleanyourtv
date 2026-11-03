@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One city full screen: its photo (or its sky until the photo is in), and its time over a soft shade -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cityRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF0B1530">
+
+    <ImageView
+        android:id="@+id/cityPhoto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/city_shade" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:orientation="vertical"
+        android:paddingStart="64dp"
+        android:paddingBottom="56dp">
+
+        <TextView
+            android:id="@+id/cityCountry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.14"
+            android:shadowColor="#99000000"
+            android:shadowRadius="8"
+            android:textAllCaps="true"
+            android:textColor="#CCFFFFFF"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/cityName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:shadowColor="#99000000"
+            android:shadowRadius="10"
+            android:textColor="#FFFFFFFF"
+            android:textSize="38sp" />
+
+        <TextView
+            android:id="@+id/cityTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-6dp"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
+            android:shadowColor="#99000000"
+            android:shadowRadius="14"
+            android:textColor="#FFFFFFFF"
+            android:textSize="124sp" />
+
+        <TextView
+            android:id="@+id/cityDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:shadowColor="#99000000"
+            android:shadowRadius="8"
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/cityDiff"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:shadowColor="#99000000"
+            android:shadowRadius="8"
+            android:textColor="#E6FFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/citySun"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:shadowColor="#99000000"
+            android:shadowRadius="8"
+            android:textColor="#E6FFFFFF"
+            android:textSize="18sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/cityHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="28dp"
+        android:shadowColor="#99000000"
+        android:shadowRadius="6"
+        android:text="@string/city_hint"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/cityCredit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="20dp"
+        android:maxWidth="520dp"
+        android:shadowColor="#CC000000"
+        android:shadowRadius="6"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textColor="#99FFFFFF"
+        android:textSize="12sp" />
+</FrameLayout>

@@ -1,7 +1,9 @@
 # World Clock
 
-Optional offline CleanYourTV add-on. It opens from a normal Android TV tile or a
-spec-1 module card. The first view contains **Local, London and Sydney**. It is an independent
+Optional CleanYourTV add-on; the clocks work offline. It opens from a normal Android TV tile or a
+spec-1 module card. OK on a clock opens that city full screen: its photo from Wikipedia, the time, how far it
+is from here and today's sunrise and sunset; Left/Right step through the clocks, holding OK opens a clock's
+options. The first view contains **Local, London and Sydney**. It is an independent
 Android app; no launcher source, configuration, signing identity or Home behavior changes.
 
 Choose up to six clocks. Each shows the time, local date, UTC offset and calendar-day difference
@@ -60,7 +62,10 @@ The 96 stars are generated once from a fixed seed. There are no map tiles or dow
 
 ## Permissions
 
-No requested permissions. No network, telemetry, advertisements, subscription, account, native
+`INTERNET`, only for the city screen's photo: the lead image of the city's English Wikipedia article, taken
+from Wikimedia Commons at 1920 px (Commons files only, so only freely licensed ones) and shown with its author
+and licence. Photos are kept in the app's cache for 30 days; without a network the city's sky stands in.
+No telemetry, advertisements, subscription, account, native
 library, overlay, accessibility service, boot receiver, alarm or always-running background worker.
 The system binds ClockDream only as a screensaver, protected by BIND_DREAM_SERVICE on its service;
 this is a restriction on callers, not a permission the app requests. Preview is not exported.

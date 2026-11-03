@@ -71,7 +71,6 @@ final class WorldMap {
             outline.lineTo(p[0], p[1]);
         }
         outline.close();
-        Map<String, double[]> places = places(context);
         for (String id : ids) {
             String zone = ClockModel.LOCAL.equals(id) ? ZoneId.systemDefault().getId() : ClockModel.zone(id);
             try {
@@ -80,31 +79,13 @@ final class WorldMap {
             } catch (RuntimeException ignored) {
                 // UTC and the like belong to no country
             }
-            String[] alias = ClockModel.alias(id);
-            double[] at = alias != null ? new double[] {Double.parseDouble(alias[3]), Double.parseDouble(alias[4])}
-                    : places.get(zone);
+            double[] at = Places.of(context, id);
             if (at != null) {
                 float[] xy = new float[2];
                 MapMath.project(at[1], at[0], xy);
                 cities.add(xy);
             }
         }
-    }
-
-    /** Zone id to {latitude, longitude}, from the bundled table. */
-    private static Map<String, double[]> places(Context context) {
-        Map<String, double[]> out = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                context.getResources().openRawResource(R.raw.zone_places), StandardCharsets.US_ASCII))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] f = line.split(" ");
-                if (f.length == 3) out.put(f[0], new double[] {Double.parseDouble(f[1]), Double.parseDouble(f[2])});
-            }
-        } catch (IOException | RuntimeException ignored) {
-            // no lights on cities, the map still draws
-        }
-        return out;
     }
 
     void draw(Canvas canvas, Paint paint, int width, int height) {

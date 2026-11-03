@@ -181,7 +181,12 @@ public final class ClockActivity extends Activity {
                     card.paint();
                     v.animate().scaleX(focused ? 1.03f : 1f).scaleY(focused ? 1.03f : 1f).setDuration(150).start();
                 });
-                card.root.setOnClickListener(v -> cityOptions(index));
+                // OK opens the city full screen; holding OK opens its options (change, move, remove)
+                card.root.setOnClickListener(v -> startActivity(CityActivity.intent(this, ids, index)));
+                card.root.setOnLongClickListener(v -> {
+                    cityOptions(index);
+                    return true;
+                });
             }
         }
         TextView help = text(getString(R.string.controls), 14, MUTED);

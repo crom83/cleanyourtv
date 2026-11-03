@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Darker at the bottom left, where the time sits, clear towards the top right so the photo shows -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape><gradient android:angle="0" android:startColor="#B3000000" android:centerColor="#40000000" android:endColor="#00000000" /></shape>
+    </item>
+    <item>
+        <shape><gradient android:angle="90" android:startColor="#A6000000" android:centerColor="#1A000000" android:endColor="#00000000" /></shape>
+    </item>
+</layer-list>

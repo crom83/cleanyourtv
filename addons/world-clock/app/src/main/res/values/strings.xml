@@ -20,7 +20,7 @@
         <item quantity="one">%1$+d day from local</item>
         <item quantity="other">%1$+d days from local</item>
     </plurals>
-    <string name="controls">Arrows to move · OK for city options · Back to return</string>
+    <string name="controls">Arrows to move · OK opens the city · hold OK for city options · Back to return</string>
     <string name="format_system">Use TV setting</string>
     <string name="format_12">12-hour time</string>
     <string name="format_24">24-hour time</string>
@@ -49,4 +49,9 @@
     <!-- "+7 from here": hours ahead or behind the TV's own clock -->
     <string name="hours_from_here">%1$s h from here</string>
     <string name="same_time">same time · %1$s</string>
+    <string name="city_hint">◀ ▶ other cities · Back to the list</string>
+    <string name="city_sun">Sunrise %1$s · sunset %2$s</string>
+    <string name="city_polar_day">The sun doesn\'t set today</string>
+    <string name="city_polar_night">The sun doesn\'t rise today</string>
+    <string name="city_photo_credit">Photo: %1$s · Wikimedia Commons</string>
 </resources>

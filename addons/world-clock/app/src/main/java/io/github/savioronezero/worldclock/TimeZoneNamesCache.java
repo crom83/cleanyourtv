@@ -43,7 +43,8 @@ final class TimeZoneNamesCache {
     /** The zone's country in a language ("Китай"), or empty for UTC and the like. */
     static String countryName(String id, Locale locale) {
         try {
-            String region = android.icu.util.TimeZone.getRegion(ClockModel.zone(id));
+            String zone = ClockModel.LOCAL.equals(id) ? java.time.ZoneId.systemDefault().getId() : ClockModel.zone(id);
+            String region = android.icu.util.TimeZone.getRegion(zone);
             if (region == null || region.length() != 2 || "001".equals(region)) return "";
             return new Locale("", region).getDisplayCountry(locale);
         } catch (RuntimeException e) {
