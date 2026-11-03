@@ -31,6 +31,14 @@
             <meta-data android:name="com.gathin.tvhome.card" android:resource="@xml/module_card" />
         </activity>
 
+        <!-- Clean Your TV live card: the launcher reads how many lights are on from this provider, only while Home is
+             on screen. It holds a count and a bulb picture, nothing else. -->
+        <meta-data android:name="com.gathin.tvhome.live" android:value="${applicationId}.card" />
+        <provider
+            android:name=".LiveCardProvider"
+            android:authorities="${applicationId}.card"
+            android:exported="true" />
+
         <!-- install.sh writes the server address and token here with `content write`, so the token never sits on
              a command line. Write-only, one file name, and only the ADB shell may call it. -->
         <provider

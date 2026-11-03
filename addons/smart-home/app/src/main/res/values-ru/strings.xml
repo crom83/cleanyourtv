@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Умный дом</string>
+
+    <string name="status_setup">Укажите адрес Home Assistant и долгосрочный токен доступа (профиль в Home Assistant, вкладка «Безопасность»).</string>
+    <string name="status_reading">Читаю Home Assistant…</string>
+    <string name="status_starting">Home Assistant запускается…</string>
+    <string name="status_connected">Подключено к %1$s.</string>
+    <string name="problem_unreadable">Не удалось разобрать ответ Home Assistant.</string>
+    <string name="problem_token">Home Assistant не принял токен доступа.</string>
+    <string name="problem_not_api">По этому адресу кто-то отвечает, но это не API Home Assistant.</string>
+    <string name="problem_unreachable">Home Assistant по этому адресу недоступен.</string>
+    <string name="problem_http">Home Assistant ответил ошибкой %1$d.</string>
+
+    <string name="state_unavailable">Недоступно</string>
+    <string name="state_run">Запустить</string>
+    <string name="state_on">Вкл</string>
+    <string name="state_off">Выкл</string>
+    <string name="state_on_brightness">Вкл · %1$d%%</string>
+    <string name="state_open">Открыто</string>
+    <string name="state_closed">Закрыто</string>
+    <string name="state_locked">Заперт</string>
+    <string name="state_unlocked">Открыт</string>
+
+    <string name="section_scenes">Сцены</string>
+    <string name="section_switches">Свет и выключатели</string>
+    <string name="section_climate">Климат</string>
+    <string name="section_sensors">Датчики</string>
+    <string name="section_openings">Двери и окна</string>
+    <string name="section_locks">Замки</string>
+    <string name="lock_detail">Только показ: замки с телевизора не открываются.</string>
+
+    <string name="room_other">Другое</string>
+    <string name="slider_hint">◀ ▶ яркость, Назад закрыть</string>
+
+    <string name="more">Дополнительно</string>
+    <string name="more_detail">Обновления, перезапуск и подключение</string>
+    <string name="updates">Обновления</string>
+    <string name="updates_none">Всё обновлено</string>
+    <string name="update_manual">Установка — в Home Assistant</string>
+    <string name="update_installing">Идёт установка</string>
+    <string name="update_ok">OK — установить</string>
+    <string name="update_progress">Устанавливается…</string>
+    <string name="update_progress_percent">Устанавливается… %1$d%%</string>
+    <string name="install_title">Установить %1$s?</string>
+    <string name="install_backup">Перед установкой Home Assistant сделает резервную копию.</string>
+    <string name="install_no_backup">Резервной копии для этого обновления нет.</string>
+    <string name="install_zigbee">Пока ставится прошивка, устройства Zigbee будут недоступны.</string>
+    <string name="install">Установить</string>
+    <string name="install_started">Установка запущена…</string>
+
+    <string name="connection">Подключение</string>
+    <string name="system">Система</string>
+    <string name="restart">Перезапустить Home Assistant</string>
+    <string name="restart_hint">Займёт около минуты</string>
+    <string name="restart_needed">Нужен после обновления: %1$s</string>
+    <string name="more_restart">Home Assistant ждёт перезапуска</string>
+    <string name="restart_title">Перезапустить Home Assistant?</string>
+    <string name="restart_message">Пока он перезапускается (около минуты), устройствами нельзя управлять ни с ТВ, ни из приложения. Автоматизации тоже встанут на паузу.</string>
+    <string name="restart_do">Перезапустить</string>
+    <string name="restart_started">Перезапускаю Home Assistant…</string>
+    <string name="restart_wait">Перезапускаю Home Assistant…\nОбычно это около минуты.</string>
+    <string name="address">Адрес Home Assistant</string>
+    <string name="address_hint">Например, http://192.168.1.10:8123</string>
+    <string name="address_bad">Это не похоже на адрес: %1$s</string>
+    <string name="token">Токен доступа</string>
+    <string name="token_hint">Хранится только на этом телевизоре.</string>
+    <string name="not_set">Не задан</string>
+    <string name="is_set">Задан</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="slider_hint_color">◀ ▶ яркость · ▼ цвет · Назад закрыть</string>
+    <!-- Names of the colour circles, in the order of Ha.PALETTE -->
+    <string-array name="palette_names">
+        <item>Белый</item>
+        <item>Тёплый белый</item>
+        <item>Красный</item>
+        <item>Оранжевый</item>
+        <item>Жёлтый</item>
+        <item>Салатовый</item>
+        <item>Зелёный</item>
+        <item>Бирюзовый</item>
+        <item>Голубой</item>
+        <item>Синий</item>
+        <item>Фиолетовый</item>
+        <item>Розовый</item>
+    </string-array>
+</resources>

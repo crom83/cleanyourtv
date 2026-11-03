@@ -1,13 +1,41 @@
 # Smart Home
 
-Your [Home Assistant](https://www.home-assistant.io) on the TV: a glance of weather and fuel prices at the top,
-then scenes, lights and switches, climate, temperature and humidity sensors, doors and windows, and locks, in
-sections you work with the remote. OK runs a scene or switches a light; ◀ ▶ dims a light by 10 % or moves a
-thermostat by half a degree. A community add-on, not made by or affiliated with the Home Assistant project. For
+Your [Home Assistant](https://www.home-assistant.io) on the TV: the home's name and the weather at the top, then
+your devices as tiles grouped by room (Home Assistant's areas), with each room's temperature and humidity beside
+its name. OK switches a light or runs a scene; holding OK on a light opens its brightness and, for an RGB light,
+its colours; CH+ / CH- change a light's brightness at once. A **More** row at the bottom opens pending updates and
+the connection settings. A community add-on, not made by or affiliated with the Home Assistant project. For
 the [Clean Your TV](../../README.md) launcher it declares a [module card](../../docs/modules.md): once you answer
 **Show card** its tile reads "Smart Home" with a blue glow. On any other Android TV home it is an ordinary app.
 
 ![Smart Home on a TV, with the glance header](screenshot.jpg)
+
+### Rooms and tiles
+
+The tiles come from `GET /api/states`; the room of each entity comes from Home Assistant's areas, read once per
+opening through `POST /api/template` (`area_name()`). Small rooms share a row of five, a large one wraps. A tile
+that is on glows warm, or in an RGB light's current colour (`rgb_color`, colour mode on); a dimmable light shows a
+brightness bar. The room's temperature and humidity sensors go into its header (`22.1° · 63%`); entities without
+an area are under **Other**. When the areas can't be read, the screen falls back to the list by kind below.
+
+| On a tile | Does |
+|---|---|
+| OK | Switches it (`homeassistant.toggle`), runs a scene |
+| Hold OK on a light | Brightness slider (◀ ▶ by 10 %) and, for an RGB light, two rows of twelve colours; ▼ lands on the one nearest the lamp's colour, OK sets it (`rgb_color`, or the light's own `white` mode for white) |
+| CH+ / CH- | Brightness ±10 % (`brightness_step_pct`), or the set temperature of a thermostat |
+
+The list scrolls under the header and fades out there. The header shows Home Assistant's `location_name`
+(`GET /api/config`) left of the weather.
+
+### More: updates and connection
+
+The **More** row carries a red badge with the number of pending updates (`update.*` entities in state `on`). It
+opens a second screen: each update with its installed and latest version, and the connection rows. OK on an update
+asks first, with Cancel focused, then calls `update.install`, with `backup: true` where the entity supports a
+backup (add-ons do, device firmware usually doesn't, and the dialog says so). Progress shows from `in_progress` /
+`update_percentage`. Back returns to the rooms.
+
+### Plain list by kind
 
 | Section | Shows | With the remote |
 |---|---|---|
@@ -38,6 +66,14 @@ Assistant, open your profile, then Security, then Long-lived access tokens, Crea
   ```
 
   `glance` is optional: without it the app picks the first weather entity and up to six euro fuel-price sensors.
+  Three more optional keys trim the screen:
+
+  | Key | Does |
+  |---|---|
+  | `exclude` | entity_id patterns not to show, `*` for any characters, ignoring case: `["*_power_outage_memory", "*_flip_indicator_light", "switch.*_child_lock", "*robot_vacuum*"]`. Devices expose many configuration switches; this keeps the tiles to what you switch. Updates are never excluded. |
+  | `hide_unavailable` | `true` hides devices that are `unavailable` or `unknown` (an unplugged lamp) until they come back; the screen refreshes every 10 seconds. |
+  | `no_install` | update entity patterns that are shown but can't be installed from the TV, for an update you'd rather run at the computer. |
+
   The app takes the file into its own storage and deletes it. Keep the file outside the repo (`backup/` is
   git-ignored).
 
@@ -72,12 +108,24 @@ change to the glance header.
 - **Self-signed HTTPS** certificates are refused. Use `http://` on the home network or a public certificate.
 - **`homeassistant.local`** names only resolve where the TV's network does mDNS name lookups; use the IP address
   if it doesn't.
-- **Which entities** for the remote list is fixed by domain and device class; the glance list can be named in
+- **Which entities** is fixed by domain and device class, trimmed with `exclude`; the glance list can be named in
   `config.json`. There is no on-TV picker yet.
+- **Home Assistant notifications and repairs** are not counted in the More badge: the REST API doesn't offer them
+  (they need the WebSocket API).
+
+## Languages
+
+English, and Russian (`values-ru`). The words for states, sections and errors in the JVM-tested `Ha` class go
+through `Ha.Lang`; `Ha.ENGLISH` is what the tests read and `Texts` gives the app's string resources.
 
 ## Tested on
 
 MOKA R8G (Android 14), on a home app that implements the module-card spec, against a stand-in server on the home network answering with Home Assistant's documented response shapes: the config pushed through `ConfigProvider`, reading the states, running a scene and dimming a light (the requests arrived as the REST API documents them). The screenshot shows the glance header on the Sony BRAVIA, with the address blurred. Also tried on a Sony BRAVIA (Android 9) against a real Home Assistant: weather and a euro fuel-price sensor on the glance header (with unit). The JVM tests cover parsing, the service calls, the request headers against a local stand-in, and errors.
+
+Rooms, tiles, RGB colours, updates, the filters and the Russian translation: TCL G13 (Google TV 14) and TCL
+BeyondTV (Android TV 11), against a real Home Assistant 2026.10 with Zigbee lights, relays and sockets, an RGB
+light and five pending updates; the owner updated Mosquitto from the TV, with a backup. The JVM tests cover the areas, rooms,
+filters, colours, updates and install calls.
 
 ## Maintainer
 

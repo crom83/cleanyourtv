@@ -1,4 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Smart Home</string>
+
+    <!-- Status line under the title -->
+    <string name="status_setup">Add your Home Assistant\'s address and a long-lived access token (your profile page in Home Assistant, under Security).</string>
+    <string name="status_reading">Reading Home Assistant…</string>
+    <string name="status_starting">Home Assistant is starting…</string>
+    <string name="status_connected">Connected to %1$s.</string>
+    <string name="problem_unreadable">Home Assistant\'s answer couldn\'t be read.</string>
+    <string name="problem_token">Home Assistant refused the access token.</string>
+    <string name="problem_not_api">That address answers, but it isn\'t Home Assistant\'s API.</string>
+    <string name="problem_unreachable">Can\'t reach Home Assistant at that address.</string>
+    <string name="problem_http">Home Assistant answered with error %1$d.</string>
+
+    <!-- States on tiles and rows -->
+    <string name="state_unavailable">Unavailable</string>
+    <string name="state_run">Run</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+    <string name="state_on_brightness">On · %1$d %%</string>
+    <string name="state_open">Open</string>
+    <string name="state_closed">Closed</string>
+    <string name="state_locked">Locked</string>
+    <string name="state_unlocked">Unlocked</string>
+
+    <!-- Section headings of the list, used when the rooms can\'t be read -->
+    <string name="section_scenes">Scenes</string>
+    <string name="section_switches">Lights and switches</string>
+    <string name="section_climate">Climate</string>
+    <string name="section_sensors">Sensors</string>
+    <string name="section_openings">Doors and windows</string>
+    <string name="section_locks">Locks</string>
+    <string name="lock_detail">Shown only: locks aren\'t opened from the TV.</string>
+
+    <!-- Rooms and tiles -->
+    <string name="room_other">Other</string>
+    <string name="slider_hint">◀ ▶ brightness, Back to close</string>
+
+    <!-- More screen -->
+    <string name="more">More</string>
+    <string name="more_detail">Updates, restart and connection</string>
+    <string name="updates">Updates</string>
+    <string name="updates_none">Everything is up to date</string>
+    <string name="update_manual">Install it in Home Assistant</string>
+    <string name="update_installing">Installing</string>
+    <string name="update_ok">OK to install</string>
+    <string name="update_progress">Installing…</string>
+    <string name="update_progress_percent">Installing… %1$d %%</string>
+    <string name="install_title">Install %1$s?</string>
+    <string name="install_backup">Home Assistant makes a backup before installing.</string>
+    <string name="install_no_backup">There is no backup for this update.</string>
+    <string name="install_zigbee">Zigbee devices are unavailable while the firmware installs.</string>
+    <string name="install">Install</string>
+    <string name="install_started">Install started…</string>
+
+    <!-- Connection -->
+    <string name="connection">Connection</string>
+    <string name="system">System</string>
+    <string name="restart">Restart Home Assistant</string>
+    <string name="restart_hint">Takes about a minute</string>
+    <string name="restart_needed">Needed after an update: %1$s</string>
+    <string name="more_restart">Home Assistant needs a restart</string>
+    <string name="restart_title">Restart Home Assistant?</string>
+    <string name="restart_message">Devices can\'t be controlled from the TV or the app while it restarts, about a minute. Automations pause too.</string>
+    <string name="restart_do">Restart</string>
+    <string name="restart_started">Restarting Home Assistant…</string>
+    <string name="restart_wait">Restarting Home Assistant…\nUsually about a minute.</string>
+    <string name="address">Home Assistant address</string>
+    <string name="address_hint">For example http://192.168.1.10:8123</string>
+    <string name="address_bad">That doesn\'t look like an address: %1$s</string>
+    <string name="token">Access token</string>
+    <string name="token_hint">Stored on this TV only.</string>
+    <string name="not_set">Not set</string>
+    <string name="is_set">Set</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="slider_hint_color">◀ ▶ brightness · ▼ colour · Back to close</string>
+    <!-- Names of the colour circles, in the order of Ha.PALETTE -->
+    <string-array name="palette_names">
+        <item>White</item>
+        <item>Warm white</item>
+        <item>Red</item>
+        <item>Orange</item>
+        <item>Yellow</item>
+        <item>Lime</item>
+        <item>Green</item>
+        <item>Turquoise</item>
+        <item>Light blue</item>
+        <item>Blue</item>
+        <item>Purple</item>
+        <item>Pink</item>
+    </string-array>
 </resources>

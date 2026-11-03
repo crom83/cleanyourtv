@@ -19,6 +19,7 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -30,14 +31,59 @@ import java.util.concurrent.Executors;
  */
 public class MainActivity extends Activity {
     private static final long REFRESH_MS = 10_000;
+    /** When to read the states again after a command, counted from Home Assistant's reply. */
+    private static final long[] RECHECK_MS = {600, 1000, 1500};
+    private static final Object RECHECK = new Object();
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService net = Executors.newSingleThreadExecutor();
     private LinearLayout rows;
+    /** The weather glance, top right, on the title's line. */
+    private LinearLayout glanceBox;
     private TextView status;
     private Config config;
     private List<Ha.Entity> entities = new ArrayList<>();
     private String problem;
+    /** entity_id to room (Home Assistant area); null until read, and then the plain list is shown. */
+    private volatile Map<String, String> areas;
+    /** The home's name in Home Assistant, left of the weather. */
+    private volatile String location = "";
+    /** Home Assistant answers but hasn't finished starting (not RUNNING yet): "Starting…" instead of "Connected". */
+    private boolean starting;
+    private Ha.Lang lng;
+    /** The brightness slider (OK held on a light). */
+    private AlertDialog slider;
+    private Row sliderRow;
+    private String sliderId;
+    private static final int COLUMNS = 5;
+    /** Colour circles per row in the light dialog: 12 colours in two rows. */
+    private static final int SWATCHES_PER_ROW = 6;
+    private boolean shownEntities;
+    /** The second screen, More: updates and the connection. */
+    private boolean more;
+    /** While Home Assistant restarts (up to this uptime), "can't connect" reads "Restarting…" instead. */
+    private long restartingUntil;
+    /** The screen-wide "Restarting…" window that blocks every other action until Home Assistant is back. */
+    private AlertDialog restartDialog;
+    private android.widget.ProgressBar restartBar;
+    private long restartStart;
+    /** Home Assistant has been seen down (or not yet running) since the restart began. */
+    private boolean restartSawDown;
+    private static final long RESTART_POLL_MS = 1000, RESTART_TICK_MS = 200, RESTART_GIVE_UP_MS = 3 * 60_000;
+    /** Restart checks run apart from the normal reads, so a slow read never holds them up. */
+    private final ExecutorService restartNet = Executors.newSingleThreadExecutor();
+    private final Runnable restartPoll = this::pollRestart;
+    private final Runnable restartTick = new Runnable() {
+        @Override
+        public void run() {
+            if (restartDialog == null) return;
+            restartBar.setProgress(Ha.restartProgress(android.os.SystemClock.uptimeMillis() - restartStart));
+            main.postDelayed(this, RESTART_TICK_MS);
+        }
+    };
+    /** Integrations that wait for a restart (Ha.restartPending); empty when none does. */
+    private List<String> restartFor = new ArrayList<>();
+    private List<Ha.Update> updates = new ArrayList<>();
     private final Runnable refresh = new Runnable() {
         @Override
         public void run() {
@@ -49,10 +95,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
+        lng = new Texts(this);
+        // The list scrolls full screen under the header, which sits on top; FadeScrollView fades what passes under it.
+        android.widget.FrameLayout page = new android.widget.FrameLayout(this);
         page.setBackgroundColor(0xFF0D1117);
-        page.setPadding(px(48), px(32), px(48), px(24));
         TextView title = new TextView(this);
         title.setText(R.string.app_name);
         title.setTextSize(28);
@@ -61,13 +107,31 @@ public class MainActivity extends Activity {
         status.setTextSize(15);
         status.setTextColor(0xFF8B949E);
         status.setPadding(0, 0, 0, px(16));
-        page.addView(title);
-        page.addView(status);
-        ScrollView scroll = new ScrollView(this);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout titles = new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        titles.addView(title);
+        titles.addView(status);
+        head.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        glanceBox = new LinearLayout(this);
+        glanceBox.setOrientation(LinearLayout.HORIZONTAL);
+        glanceBox.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(glanceBox);
+        head.setPadding(px(48), px(32), px(48), 0);
+        FadeScrollView scroll = new FadeScrollView(this);
+        scroll.setPadding(px(48), px(120), px(48), px(24));
         rows = new LinearLayout(this);
         rows.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(rows);
-        page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        scroll.setClipChildren(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        page.addView(scroll, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        page.addView(head, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        head.addOnLayoutChangeListener((v, l, t, r, bo, ol, ot, or, ob) -> scroll.setInset(bo - t));
         setContentView(page);
     }
 
@@ -83,11 +147,16 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         main.removeCallbacks(refresh);
+        main.removeCallbacksAndMessages(RECHECK);
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        main.removeCallbacks(restartPoll);
+        main.removeCallbacks(restartTick);
+        if (restartDialog != null) restartDialog.dismiss();
+        restartNet.shutdownNow();
         net.shutdownNow();
         super.onDestroy();
     }
@@ -95,24 +164,50 @@ public class MainActivity extends Activity {
     private void load() {
         Config c = config;
         net.execute(() -> {
-            HaClient.Reply r = new HaClient(c.url, c.token).get("/api/states");
+            HaClient client = new HaClient(c.url, c.token);
+            if (areas == null) {
+                Ha.Call a = Ha.areasCall();
+                HaClient.Reply ar = client.post(a.path, a.body);
+                if (ar.ok()) areas = Ha.parseAreas(ar.body);
+            }
+            // Small, and read every time: its state tells a finished start (RUNNING) from one still going
+            HaClient.Reply cr = client.get("/api/config");
+            if (cr.ok()) location = Ha.locationName(cr.body);
+            boolean run = cr.ok() && Ha.running(cr.body);
+            HaClient.Reply r = client.get("/api/states");
             List<Ha.Entity> found = null;
+            List<Ha.Update> ups = null;
+            List<String> rp = null;
             String why = null;
             if (r.ok()) {
+                ups = Ha.updates(r.body);
+                rp = Ha.restartPending(r.body);
                 try {
-                    found = Ha.parse(r.body, c.glance);
+                    found = Ha.parse(r.body, c.glance, c.exclude, c.hideUnavailable);
                 } catch (JSONException e) {
-                    why = "Home Assistant's answer couldn't be read.";
+                    why = getString(R.string.problem_unreadable);
                 }
             } else {
-                why = Ha.problem(r.code);
+                why = Ha.problem(r.code, lng);
             }
             List<Ha.Entity> f = found;
+            List<Ha.Update> u = ups;
+            List<String> pending = rp;
             String w = why;
             main.post(() -> {
                 if (isFinishing()) return;
+                starting = w == null && !run;
+                if (restartDialog != null) {   // the regular reads count as well: down until it is RUNNING again
+                    if (w != null || !run) restartSawDown = true;
+                    else if (restartSawDown) endRestart();
+                }
                 problem = w;
-                if (f != null) entities = f;
+                if (f != null) {
+                    entities = f;
+                    LiveCardProvider.publish(this, Ha.lightsOn(f));   // the launcher tile shows the same count
+                }
+                if (u != null) updates = u;
+                if (pending != null) restartFor = pending;
                 build();
             });
         });
@@ -124,71 +219,493 @@ public class MainActivity extends Activity {
         net.execute(() -> {
             HaClient.Reply r = new HaClient(c.url, c.token).post(call.path, call.body);
             main.post(() -> {
-                if (!r.ok()) status.setText(Ha.problem(r.code));
-                main.postDelayed(this::load, 600);
+                if (!r.ok()) status.setText(Ha.problem(r.code, lng));
+                recheck();
             });
         });
     }
 
+    /**
+     * Reads the states again a few times after a command, as a device can take a moment to report its new state;
+     * a newer command replaces the checks of the one before. The 10-second refresh goes on as usual.
+     */
+    private void recheck() {
+        main.removeCallbacksAndMessages(RECHECK);
+        long now = android.os.SystemClock.uptimeMillis();
+        for (long delay : RECHECK_MS) main.postAtTime(this::load, RECHECK, now + delay);
+    }
+
     /** Rebuilds the list; focus stays on the row it was on. */
     private void build() {
-        int focused = rows.indexOfChild(rows.getFocusedChild());
+        View had = getCurrentFocus();
+        Object focusedTag = had != null && had.getParent() != null ? had.getTag() : null;
+        // First build with data: focus the first tile, not the connection row.
+        if (!shownEntities && !entities.isEmpty()) {
+            shownEntities = true;
+            focusedTag = null;
+            had = null;
+        }
+        int focused = had == null ? -1 : rows.indexOfChild(rows.getFocusedChild());
         rows.removeAllViews();
         if (!config.complete()) {
-            status.setText("Add your Home Assistant's address and a long-lived access token (your profile page in"
-                    + " Home Assistant, under Security).");
+            status.setText(R.string.status_setup);
         } else if (problem != null) {
-            status.setText(problem);
+            status.setText(android.os.SystemClock.uptimeMillis() < restartingUntil
+                    ? getString(R.string.restart_started) : problem);
         } else {
-            status.setText(entities.isEmpty() ? "Reading Home Assistant…" : "Connected to " + config.url + ".");
+            status.setText(starting ? getString(R.string.status_starting) : entities.isEmpty()
+                    ? getString(R.string.status_reading) : getString(R.string.status_connected, config.url));
         }
         addGlance(Ha.glance(entities, config.glance));
+        if (!config.complete()) more = true;
+        Row url = null;
+        if (more) {
+            url = addMore();
+        } else {
+            if (areas != null) {
+                addRooms();
+            } else {
+                addList();
+            }
+            // A restart that Home Assistant waits for counts in the badge like an update
+            int waiting = updates.size() + (restartFor.isEmpty() ? 0 : 1);
+            Row extra = add(new Row(this, getString(R.string.more), getString(restartFor.isEmpty()
+                    ? R.string.more_detail : R.string.more_restart), false, this::openMore, null));
+            extra.setTag("more");
+            extra.setBadge(waiting == 0 ? null : String.valueOf(waiting));
+            LinearLayout.LayoutParams ep = (LinearLayout.LayoutParams) extra.getLayoutParams();
+            ep.topMargin = px(10);
+        }
+        updateSlider();
+
+        View keep = focusedTag == null ? null : rows.findViewWithTag(focusedTag);
+        if (keep == null && focusedTag == null && focused >= 0 && focused < rows.getChildCount()) keep = rows.getChildAt(focused);
+        if (keep != null && keep.isFocusable()) keep.requestFocus();
+        else if (!config.complete() && url != null) url.requestFocus();
+        else {
+            View first = firstFocusable(rows);
+            if (first != null) first.requestFocus();
+        }
+    }
+
+    /** The More screen: pending updates and the connection. Returns the address row. */
+    private Row addMore() {
+        heading(getString(R.string.updates));
+        if (updates.isEmpty()) {
+            Row none = add(new Row(this, getString(R.string.updates_none), null, false, () -> { }, null));
+            none.setTag("upd:none");
+        }
+        for (Ha.Update u : updates) {
+            boolean allowed = u.canInstall() && !Ha.excluded(u.id, config.noInstall);
+            String hint = getString(!allowed ? R.string.update_manual
+                    : u.inProgress ? R.string.update_installing : R.string.update_ok);
+            Row r = add(new Row(this, u.title, hint, false, () -> confirmInstall(u.id), null));
+            r.setTag(u.id);
+            r.setValue(u.inProgress
+                    ? (u.percent >= 0 ? getString(R.string.update_progress_percent, u.percent)
+                            : getString(R.string.update_progress))
+                    : u.installed + " → " + u.latest);
+        }
+        heading(getString(R.string.system));
+        Row restart = add(new Row(this, getString(R.string.restart), restartFor.isEmpty()
+                ? getString(R.string.restart_hint) : getString(R.string.restart_needed, String.join(", ", restartFor)),
+                false, this::confirmRestart, null));
+        restart.setTag("sys:restart");
+        if (!restartFor.isEmpty()) restart.setBadge("!");
+        heading(getString(R.string.connection));
+        Row url = add(new Row(this, getString(R.string.address), getString(R.string.address_hint), false,
+                this::editUrl, null));
+        url.setTag("conn:url");
+        url.setValue(config.url.isEmpty() ? getString(R.string.not_set) : config.url);
+        Row token = add(new Row(this, getString(R.string.token), getString(R.string.token_hint), false,
+                this::editToken, null));
+        token.setTag("conn:token");
+        token.setValue(getString(config.token.isEmpty() ? R.string.not_set : R.string.is_set));
+        return url;
+    }
+
+    /**
+     * Installing: Home Assistant answers only once the install has finished, so a timeout (code 0) is not an error;
+     * the install is running. Its progress shows on the 10-second refresh.
+     */
+    private void sendInstall(Ha.Call call) {
+        Config c = config;
+        status.setText(R.string.install_started);
+        net.execute(() -> {
+            HaClient.Reply r = new HaClient(c.url, c.token).post(call.path, call.body);
+            main.post(() -> {
+                if (!r.ok() && r.code != 0) status.setText(Ha.problem(r.code, lng));
+                load();
+            });
+        });
+        main.postDelayed(this::load, 2000);
+    }
+
+    /** Asks before restarting Home Assistant; Cancel is the default, as with an update. */
+    private void confirmRestart() {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.restart_title)
+                .setMessage(R.string.restart_message)
+                .setPositiveButton(R.string.restart_do, (d, w) -> sendRestart())
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+                .getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();
+    }
+
+    /**
+     * Home Assistant may drop the connection while it goes down, so a timeout or closed connection (code 0) counts as
+     * started. The rows show it unreachable for a minute or so and come back by themselves on the 10-second refresh.
+     */
+    private void sendRestart() {
+        Config c = config;
+        status.setText(R.string.restart_started);
+        restartingUntil = android.os.SystemClock.uptimeMillis() + RESTART_GIVE_UP_MS;
+        showRestartDialog();
+        Ha.Call call = Ha.restart();
+        // Its own thread: Home Assistant may hold this call open until it stops, and the checks must not wait for it
+        new Thread(() -> {
+            HaClient.Reply r = new HaClient(c.url, c.token).post(call.path, call.body);
+            main.post(() -> {
+                if (isFinishing() || restartDialog == null) return;
+                if (!r.ok() && r.code != 0) {   // refused, e.g. a broken configuration: nothing restarts
+                    endRestart();
+                    status.setText(Ha.problem(r.code, lng));
+                }
+            });
+        }, "restart").start();
+        main.postDelayed(restartPoll, RESTART_POLL_MS);
+    }
+
+    /** A window over everything with a bar aimed at a minute; only Back works, and it leaves the app. */
+    private void showRestartDialog() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(px(28), px(24), px(28), px(24));
+        TextView text = new TextView(this);
+        text.setTextSize(18);
+        text.setTextColor(0xFFE6EDF3);
+        text.setText(R.string.restart_wait);
+        box.addView(text);
+        restartBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        restartBar.setMax(1000);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, px(8));
+        bp.topMargin = px(20);
+        box.addView(restartBar, bp);
+        restartStart = android.os.SystemClock.uptimeMillis();
+        restartSawDown = false;
+        restartDialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setView(box)
+                .setCancelable(false)
+                .setOnKeyListener((d, keyCode, event) -> {
+                    if (keyCode == android.view.KeyEvent.KEYCODE_BACK
+                            && event.getAction() == android.view.KeyEvent.ACTION_UP) finish();
+                    return true;   // every other key is swallowed
+                })
+                .show();
+        main.post(restartTick);
+    }
+
+    /**
+     * Asks /api/config every second; done once Home Assistant has been seen down and says RUNNING again, the same
+     * moment the status behind turns from "Starting…" to "Connected".
+     */
+    private void pollRestart() {
+        if (restartDialog == null) return;
+        Config c = config;
+        restartNet.execute(() -> {
+            HaClient.Reply r = new HaClient(c.url, c.token).get("/api/config");
+            boolean up = r.ok() && Ha.running(r.body);
+            main.post(() -> {
+                if (isFinishing() || restartDialog == null) return;
+                if (!up) restartSawDown = true;
+                long elapsed = android.os.SystemClock.uptimeMillis() - restartStart;
+                if ((up && restartSawDown) || elapsed > RESTART_GIVE_UP_MS) {
+                    endRestart();
+                } else {
+                    main.postDelayed(restartPoll, RESTART_POLL_MS);
+                }
+            });
+        });
+    }
+
+    /** Fills the bar, then closes the window a moment later and reads everything again. */
+    private void endRestart() {
+        main.removeCallbacks(restartPoll);
+        main.removeCallbacks(restartTick);
+        AlertDialog d = restartDialog;
+        restartDialog = null;
+        if (d != null) {
+            restartBar.setProgress(1000);
+            main.postDelayed(d::dismiss, 300);
+        }
+        restartingUntil = 0;
+        areas = null;   // read the rooms and place again from the fresh start
+        load();
+    }
+
+    /** Asks before installing; reads the update's current state by id. */
+    private void confirmInstall(String id) {
+        Ha.Update u = null;
+        for (Ha.Update x : updates) if (x.id.equals(id)) u = x;
+        if (u == null || !u.canInstall() || u.inProgress || Ha.excluded(u.id, config.noInstall)) return;
+        Ha.Update target = u;
+        StringBuilder msg = new StringBuilder();
+        msg.append(u.installed).append(" → ").append(u.latest).append("\n\n");
+        if (u.canBackup()) {
+            msg.append(getString(R.string.install_backup));
+        } else {
+            msg.append(getString(R.string.install_no_backup));
+        }
+        if (id.contains("firmware") || id.contains("slzb") || id.contains("zigbee")) {
+            msg.append("\n").append(getString(R.string.install_zigbee));
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(getString(R.string.install_title, u.title))
+                .setMessage(msg.toString())
+                .setPositiveButton(R.string.install, (d, w) -> sendInstall(Ha.install(target)))
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+                .getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();   // Cancel is the default
+    }
+
+    private void openMore() {
+        more = true;
+        rows.removeAllViews();   // so focus doesn't come back to the More row
+        build();
+        View first = firstFocusable(rows);
+        if (first != null) first.requestFocus();
+        ((ScrollView) rows.getParent()).scrollTo(0, 0);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (more && config.complete()) {
+            more = false;
+            rows.removeAllViews();
+            build();
+            View m = rows.findViewWithTag("more");
+            if (m != null) m.requestFocus();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    private static View firstFocusable(ViewGroup g) {
+        for (int i = 0; i < g.getChildCount(); i++) {
+            View v = g.getChildAt(i);
+            if (v.isFocusable()) return v;
+            if (v instanceof ViewGroup) {
+                View f = firstFocusable((ViewGroup) v);
+                if (f != null) return f;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Rooms as blocks (name, a temperature/humidity line, then tiles). Small rooms share a line while COLUMNS
+     * slots last; a large room takes the whole line and wraps.
+     */
+    private void addRooms() {
+        int avail = getResources().getDisplayMetrics().widthPixels - px(96) - px(16);
+        int gap = px(14);
+        int w = (avail - gap * (COLUMNS - 1)) / COLUMNS;
+        int h = Math.round(w * 0.72f);
+        LinearLayout line = null;
+        int used = 0;
+        for (Ha.Room room : Ha.rooms(entities, areas, getString(R.string.room_other))) {
+            int slots = Math.max(1, Math.min(COLUMNS, room.tiles.size()));
+            if (line == null || used + slots > COLUMNS) {
+                line = new LinearLayout(this);
+                line.setOrientation(LinearLayout.HORIZONTAL);
+                line.setClipChildren(false);
+                line.setClipToPadding(false);
+                line.setPadding(px(8), 0, px(8), px(6));
+                rows.addView(line);
+                used = 0;
+            }
+            LinearLayout block = new LinearLayout(this);
+            block.setOrientation(LinearLayout.VERTICAL);
+            block.setClipChildren(false);
+            block.setClipToPadding(false);
+            TextView name = new TextView(this);
+            name.setText(room.name);
+            name.setTextSize(20);
+            name.setTextColor(0xFFFFFFFF);
+            name.setSingleLine(true);
+            name.setPadding(0, px(14), 0, 0);
+            block.addView(name);
+            TextView sum = new TextView(this);
+            String text = room.summary();
+            sum.setText(text.isEmpty() ? " " : text);
+            sum.setTextSize(14);
+            sum.setTextColor(0xFF8B949E);
+            sum.setSingleLine(true);
+            sum.setPadding(0, 0, 0, px(8));
+            block.addView(sum);
+            LinearLayout tiles = null;
+            for (int i = 0; i < room.tiles.size(); i++) {
+                if (i % COLUMNS == 0) {
+                    tiles = new LinearLayout(this);
+                    tiles.setOrientation(LinearLayout.HORIZONTAL);
+                    tiles.setClipChildren(false);
+                    tiles.setClipToPadding(false);
+                    tiles.setPadding(0, 0, 0, gap);
+                    block.addView(tiles);
+                }
+                Ha.Entity e = room.tiles.get(i);
+                Ha.Call press = Ha.press(e);
+                boolean steps = Ha.step(e, 1) != null;
+                boolean dimmable = steps && e.kind == Ha.Kind.TOGGLE;
+                Tile t = new Tile(this, e, lng, press == null ? null : () -> send(Ha.press(e)),
+                        dimmable ? () -> openSlider(e) : null, steps ? d -> send(Ha.step(e, d)) : null);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
+                if (i % COLUMNS != 0) lp.setMarginStart(gap);
+                tiles.addView(t, lp);
+            }
+            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(slots * w + (slots - 1) * gap,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (used > 0) bp.setMarginStart(gap);
+            line.addView(block, bp);
+            used += slots;
+        }
+        rows.setClipChildren(false);
+        rows.setClipToPadding(false);
+    }
+
+    /** The brightness slider: a row with a bar, ◀ ▶ by 10 %. */
+    private void openSlider(Ha.Entity e) {
+        sliderId = e.id;
+        sliderRow = new Row(this, e.name, getString(R.string.slider_hint),
+                true, () -> send(Ha.press(find(sliderId))), d -> {
+                    Ha.Entity cur = find(sliderId);
+                    if (cur != null) send(Ha.step(cur, d));
+                });
+        sliderRow.setMinimumWidth(px(560));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
+        box.addView(sliderRow);
+        if (e.colorable) addSwatches(box, e);
+        if (e.colorable) sliderRow.setDetail(getString(R.string.slider_hint_color));
+        slider = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setView(box)
+                .setOnDismissListener(d -> {
+                    slider = null;
+                    sliderRow = null;
+                    sliderId = null;
+                })
+                .show();
+        updateSlider();
+        sliderRow.requestFocus();
+    }
+
+    /** Two rows of colour circles under the slider: ◀ ▶ choose, OK sets it. Returns the circle nearest the lamp's colour. */
+    private View addSwatches(LinearLayout box, Ha.Entity e) {
+        String[] names = getResources().getStringArray(R.array.palette_names);
+        LinearLayout line = null;
+        View nearest = null;
+        int near = Ha.nearest(e);
+        for (int i = 0; i < Ha.PALETTE.length; i++) {
+            if (i % SWATCHES_PER_ROW == 0) {
+                line = new LinearLayout(this);
+                line.setOrientation(LinearLayout.HORIZONTAL);
+                line.setGravity(Gravity.CENTER);
+                // padding so the focused circle (scaled up, outlined) isn't clipped by its row
+                line.setPadding(px(8), px(i == 0 ? 14 : 6), px(8), px(i + SWATCHES_PER_ROW >= Ha.PALETTE.length ? 16 : 6));
+                line.setClipChildren(false);
+                line.setClipToPadding(false);
+                box.addView(line);
+            }
+            int rgb = Ha.PALETTE[i];
+            View dot = new View(this);
+            android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+            d.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            d.setColor(0xFF000000 | rgb);
+            d.setStroke(px(1), 0x55FFFFFF);
+            dot.setBackground(d);
+            dot.setFocusable(true);
+            dot.setClickable(true);
+            if (i < names.length) dot.setContentDescription(names[i]);
+            dot.setOnFocusChangeListener((v, has) -> {
+                d.setStroke(has ? px(3) : px(1), has ? 0xFFFFFFFF : 0x55FFFFFF);
+                v.animate().scaleX(has ? 1.2f : 1f).scaleY(has ? 1.2f : 1f).setDuration(100).start();
+            });
+            dot.setOnClickListener(v -> {
+                Ha.Entity cur = find(sliderId);
+                if (cur != null) send(Ha.color(cur, rgb));
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(36), px(36));
+            lp.setMargins(px(9), 0, px(9), 0);
+            line.addView(dot, lp);
+            if (i == near) nearest = dot;
+        }
+        if (nearest != null) {
+            // Down from the slider lands on the lamp's current colour, not the first circle
+            nearest.setId(View.generateViewId());
+            sliderRow.setNextFocusDownId(nearest.getId());
+        }
+        return nearest;
+    }
+
+    private void updateSlider() {
+        if (sliderRow == null) return;
+        Ha.Entity e = find(sliderId);
+        if (e == null) return;
+        boolean on = "on".equals(e.state);
+        sliderRow.setValue(e.value(lng));
+        sliderRow.setBar(on && e.brightness >= 0 ? e.brightness / 100f : 0f);
+    }
+
+    private Ha.Entity find(String id) {
+        if (id == null) return null;
+        for (Ha.Entity e : entities) if (e.id.equals(id)) return e;
+        return null;
+    }
+
+    /** The plain list by kind, when the rooms can't be read. */
+    private void addList() {
         Ha.Kind section = null;
         for (Ha.Entity e : entities) {
             if (!Ha.inList(e)) continue;
             if (e.kind != section) {
                 section = e.kind;
-                heading(Ha.section(section));
+                heading(lng.section(section));
             }
             Ha.Call press = Ha.press(e);
             boolean steps = Ha.step(e, 1) != null;
             boolean bar = e.kind == Ha.Kind.TOGGLE && e.brightness >= 0;
             Row r = add(new Row(this, e.name, null, bar, press == null ? null : () -> send(Ha.press(e)),
                     steps ? d -> send(Ha.step(e, d)) : null));
-            r.setValue(e.value());
+            r.setValue(e.value(lng));
             if (bar) r.setBar("on".equals(e.state) ? e.brightness / 100f : 0f);
             if (!e.available()) r.setAlpha(0.5f);
-            if (e.kind == Ha.Kind.LOCK) r.setDetail("Shown only: locks aren't opened from the TV.");
-        }
-        heading("Connection");
-        Row url = add(new Row(this, "Home Assistant address", "For example http://192.168.1.10:8123", false,
-                this::editUrl, null));
-        url.setValue(config.url.isEmpty() ? "Not set" : config.url);
-        Row token = add(new Row(this, "Access token", "Stored on this TV only.", false, this::editToken, null));
-        token.setValue(config.token.isEmpty() ? "Not set" : "Set");
-
-        View keep = focused >= 0 && focused < rows.getChildCount() ? rows.getChildAt(focused) : null;
-        if (keep != null && keep.isFocusable()) keep.requestFocus();
-        else if (!config.complete()) url.requestFocus();
-        else for (int i = 0; i < rows.getChildCount(); i++) {
-            if (rows.getChildAt(i).isFocusable()) {
-                rows.getChildAt(i).requestFocus();
-                break;
-            }
+            if (e.kind == Ha.Kind.LOCK) r.setDetail(getString(R.string.lock_detail));
+            r.setTag(e.id);
         }
     }
 
     private void addGlance(Ha.Glance g) {
+        glanceBox.removeAllViews();
         if (g.empty()) return;
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.HORIZONTAL);
-        box.setGravity(Gravity.CENTER_VERTICAL);
-        box.setPadding(px(16), px(8), px(16), px(20));
+        LinearLayout box = glanceBox;
+        box.setPadding(px(16), 0, px(8), 0);
+        if (!location.isEmpty()) {
+            TextView place = new TextView(this);
+            place.setText(location);
+            place.setTextSize(20);
+            place.setTextColor(0xFF8B949E);
+            LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            pp.setMarginEnd(px(18));
+            box.addView(place, pp);
+        }
         if (!g.icon.isEmpty()) {
             ImageView icon = new ImageView(this);
             icon.setImageResource(weatherDrawable(g.icon));
-            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(px(56), px(56));
-            ip.setMarginEnd(px(20));
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(px(44), px(44));
+            ip.setMarginEnd(px(14));
             box.addView(icon, ip);
         }
         LinearLayout text = new LinearLayout(this);
@@ -196,7 +713,7 @@ public class MainActivity extends Activity {
         if (g.weather != null && g.weather.available() && !Double.isNaN(g.weather.current)) {
             TextView temp = new TextView(this);
             temp.setText(Ha.number(g.weather.current) + "°");
-            temp.setTextSize(42);
+            temp.setTextSize(34);
             temp.setTextColor(0xFFFFFFFF);
             temp.setIncludeFontPadding(false);
             text.addView(temp);
@@ -206,7 +723,7 @@ public class MainActivity extends Activity {
             StringBuilder line = new StringBuilder();
             for (Ha.Entity p : g.prices) {
                 if (line.length() > 0) line.append("   ");
-                line.append(p.name).append(' ').append(p.value());
+                line.append(p.name).append(' ').append(p.value(lng));
             }
             prices.setText(line.toString());
             prices.setTextSize(16);
@@ -215,7 +732,6 @@ public class MainActivity extends Activity {
             text.addView(prices);
         }
         box.addView(text);
-        rows.addView(box);
     }
 
     private static int weatherDrawable(String icon) {
@@ -231,11 +747,11 @@ public class MainActivity extends Activity {
     }
 
     private void editUrl() {
-        edit("Home Assistant address", config.url.isEmpty() ? "http://" : config.url,
+        edit(getString(R.string.address), config.url.isEmpty() ? "http://" : config.url,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI, v -> {
                     String u = Ha.normalizeUrl(v);
                     if (!u.isEmpty() && !Ha.validUrl(u)) {
-                        status.setText("That doesn't look like an address: " + u);
+                        status.setText(getString(R.string.address_bad, u));
                         return;
                     }
                     Config.saveUrl(this, u);
@@ -244,7 +760,7 @@ public class MainActivity extends Activity {
     }
 
     private void editToken() {
-        edit("Access token", "", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD, v -> {
+        edit(getString(R.string.token), "", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD, v -> {
             if (v.trim().isEmpty()) return;
             Config.saveToken(this, v);
             reload();
@@ -253,6 +769,7 @@ public class MainActivity extends Activity {
 
     private void reload() {
         config = Config.load(this);
+        areas = null;
         problem = null;
         entities = new ArrayList<>();
         main.removeCallbacks(refresh);
@@ -273,8 +790,8 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(title)
                 .setView(field)
-                .setPositiveButton("Save", (d, w) -> done.done(field.getText().toString()))
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton(R.string.save, (d, w) -> done.done(field.getText().toString()))
+                .setNegativeButton(R.string.cancel, null)
                 .show();
         field.requestFocus();
     }
