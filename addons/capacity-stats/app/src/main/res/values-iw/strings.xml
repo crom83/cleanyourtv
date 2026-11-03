@@ -1,10 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">זיכרון ואחסון</string>
-    <string name="loading">קורא נתונים…</string>
-    <string name="unavailable">הנתונים אינם זמינים</string>
-    <string name="back">חזרה</string>
-    <string name="memory">זיכרון RAM זמין: %1$s</string>
-    <string name="memory_used">זיכרון RAM בשימוש: %1$s</string>
-    <string name="storage">אחסון זמין: %1$s</string>
-    <string name="note">הזיכרון הזמין כולל מטמון שניתן לשחרור; הזיכרון בשימוש הוא הסך הכולל פחות הזמין. האחסון מתייחס למחיצת הנתונים.</string>
+    <string name="title">זיכרון ואחסון</string>
+    <string name="memory_title">זיכרון</string>
+    <string name="storage_title">אחסון</string>
+    <string name="unit_mb_free">MB פנויים</string>
+    <string name="unit_gb_free">GB פנויים</string>
+    <string name="memory_detail">מתוך %1$d MB · %2$d MB בשימוש</string>
+    <string name="storage_detail">מתוך %1$s GB · %2$s GB בשימוש</string>
+    <string name="last_minute">זיכרון פנוי בדקה האחרונה</string>
+    <string name="storage_note">אפליקציות, הנתונים שלהן והקבצים שלך</string>
+    <string name="clean">פינוי זיכרון</string>
+    <string name="cleaning">מפנה זיכרון…</string>
+    <string name="cleaned">פונו %1$d MB · כעת %2$d MB פנויים</string>
+    <string name="cleaned_none">אין עוד מה לפנות · %1$d MB פנויים</string>
 </resources>

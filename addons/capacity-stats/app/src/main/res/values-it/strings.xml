@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Statistiche di capacità</string>
-    <string name="loading">Lettura dei contatori…</string>
-    <string name="unavailable">Letture non disponibili</string>
-    <string name="back">Indietro</string>
-    <string name="memory">RAM disponibile: %1$s</string>
-    <string name="memory_used">RAM usata: %1$s</string>
-    <string name="storage">Spazio disponibile: %1$s</string>
-    <string name="note">La RAM disponibile include le cache recuperabili; la RAM usata è il totale meno il disponibile. Lo spazio si riferisce al filesystem dei dati.</string>
+    <string name="title">Memoria e spazio</string>
+    <string name="memory_title">Memoria</string>
+    <string name="storage_title">Spazio</string>
+    <string name="unit_mb_free">MB liberi</string>
+    <string name="unit_gb_free">GB liberi</string>
+    <string name="memory_detail">su %1$d MB · %2$d MB in uso</string>
+    <string name="storage_detail">su %1$s GB · %2$s GB in uso</string>
+    <string name="last_minute">Memoria libera nell\'ultimo minuto</string>
+    <string name="storage_note">App, i loro dati e i tuoi file</string>
+    <string name="clean">Libera memoria</string>
+    <string name="cleaning">Libero la memoria…</string>
+    <string name="cleaned">Liberati %1$d MB · ora %2$d MB liberi</string>
+    <string name="cleaned_none">Niente altro da liberare · %1$d MB liberi</string>
 </resources>

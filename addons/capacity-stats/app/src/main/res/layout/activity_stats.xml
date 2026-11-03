@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full screen on a 1080p TV (960 x 540 dp): two cards with ring gauges, memory with its last minute, a button -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/screen_bg"
+    android:orientation="vertical"
+    android:paddingStart="56dp"
+    android:paddingTop="36dp"
+    android:paddingEnd="56dp"
+    android:paddingBottom="32dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
+        android:text="@string/title"
+        android:textColor="#FFFFFFFF"
+        android:textSize="32sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="20dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- Memory -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/card_bg"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="22dp">
+
+            <TextView style="@style/CardTitle" android:text="@string/memory_title" />
+
+            <FrameLayout
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_marginTop="14dp">
+
+                <com.lionlev.tv.capacity.Gauge
+                    android:id="@+id/memoryGauge"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <TextView android:id="@+id/memoryFree" style="@style/BigNumber" />
+                    <TextView android:id="@+id/memoryUnit" style="@style/Unit" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <TextView android:id="@+id/memoryDetail" style="@style/Detail" />
+
+            <com.lionlev.tv.capacity.Sparkline
+                android:id="@+id/memoryHistory"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="12dp"
+                android:layout_weight="1"
+                android:minHeight="40dp" />
+
+            <TextView
+                style="@style/Caption"
+                android:text="@string/last_minute" />
+        </LinearLayout>
+
+        <!-- Storage -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/card_bg"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="22dp">
+
+            <TextView style="@style/CardTitle" android:text="@string/storage_title" />
+
+            <FrameLayout
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_marginTop="14dp">
+
+                <com.lionlev.tv.capacity.Gauge
+                    android:id="@+id/storageGauge"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <TextView android:id="@+id/storageFree" style="@style/BigNumber" />
+                    <TextView android:id="@+id/storageUnit" style="@style/Unit" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <TextView android:id="@+id/storageDetail" style="@style/Detail" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                style="@style/Caption"
+                android:text="@string/storage_note" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/clean"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/button_bg"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/clean"
+            android:textColor="@color/button_text"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/cleanResult"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_weight="1"
+            android:textColor="#B3FFFFFF"
+            android:textSize="16sp" />
+    </LinearLayout>
+</LinearLayout>

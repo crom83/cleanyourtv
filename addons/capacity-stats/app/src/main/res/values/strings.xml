@@ -1,10 +1,20 @@
 <resources>
     <string name="app_name">Capacity Stats</string>
-    <string name="loading">Reading counters…</string>
-    <string name="unavailable">Readings unavailable</string>
-    <string name="back">Back</string>
-    <string name="memory">Available RAM: %1$s</string>
-    <string name="memory_used">Used RAM: %1$s</string>
-    <string name="storage">Available storage: %1$s</string>
-    <string name="note">Available RAM includes reclaimable caches; used RAM is total minus available. Storage refers to the data filesystem.</string>
+    <string name="title">Memory and storage</string>
+    <string name="memory_title">Memory</string>
+    <string name="storage_title">Storage</string>
+    <string name="unit_mb_free">MB free</string>
+    <string name="unit_gb_free">GB free</string>
+    <!-- "of 932 MB · 581 MB in use" -->
+    <string name="memory_detail">of %1$d MB · %2$d MB in use</string>
+    <string name="storage_detail">of %1$s GB · %2$s GB in use</string>
+    <string name="last_minute">Free memory over the last minute</string>
+    <string name="storage_note">Apps, their data and your files</string>
+    <string name="clean">Free up memory</string>
+    <string name="cleaning">Freeing up memory…</string>
+    <string name="cleaned">Freed %1$d MB · now %2$d MB free</string>
+    <string name="cleaned_none">Nothing more to free · %1$d MB free</string>
+    <!-- The launcher tile's line (live card): free memory -->
+    <string name="live_line">%1$d MB</string>
+    <string name="unavailable">—</string>
 </resources>

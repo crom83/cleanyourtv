@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A deep blue-grey night, a little lighter at the top left -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:angle="315" android:startColor="#FF16242F" android:endColor="#FF0A1016" android:type="linear" />
+</shape>
