@@ -279,6 +279,11 @@ public final class LauncherSettingsActivity extends Activity {
             link(getString(R.string.screensaver_delay_title), now > 0 ? getString(R.string.minutes_short, now) : null,
                     this::openSystemScreensaver);
         }
+        View preview = link(getString(R.string.screensaver_preview), null, this::previewScreensaver);
+        boolean on = Screensaver.current(this) != null;
+        preview.setEnabled(on);
+        preview.setFocusable(on);
+        preview.setAlpha(on ? 1f : 0.45f);
         hint(getString(canWrite ? R.string.screensaver_hint : R.string.screensaver_hint_system));
     }
 
@@ -527,6 +532,36 @@ public final class LauncherSettingsActivity extends Activity {
         if (now == null) return getString(R.string.screensaver_off);
         for (Screensaver.Dream d : Screensaver.installed(this)) if (d.component.equals(now)) return d.label;
         return now.getShortClassName();
+    }
+
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable restorePreview = () -> Screensaver.restorePreview(this);
+
+    /** Starts the chosen screensaver now, or in a few seconds where the TV can only start it by timeout. */
+    private void previewScreensaver() {
+        if (Screensaver.previewNow(this)) return;
+        if (!Screensaver.canWrite(this)) {
+            Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            Screensaver.previewSoon(this);
+        } catch (SecurityException e) {
+            Toast.makeText(this, R.string.screensaver_no_settings, Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, getString(R.string.screensaver_preview_soon, Screensaver.PREVIEW_SECONDS),
+                Toast.LENGTH_LONG).show();
+        handler.removeCallbacks(restorePreview);
+        handler.postDelayed(restorePreview, 20_000);   // a key pressed meanwhile keeps the screensaver away
+    }
+
+    /** The screensaver covering this screen pauses it: the old time to the screensaver comes back at once. */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(restorePreview);
+        Screensaver.restorePreview(this);
     }
 
     private void openSystemScreensaver() {

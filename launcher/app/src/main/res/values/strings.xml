@@ -128,6 +128,8 @@
     <string name="screensaver_title">Screensaver</string>
     <string name="screensaver_delay_title">Screensaver after</string>
     <string name="screensaver_off">Off</string>
+    <string name="screensaver_preview">Preview</string>
+    <string name="screensaver_preview_soon">The screensaver starts in %1$d seconds. Leave the remote alone.</string>
     <string name="minutes_short">%1$d min</string>
     <string name="screensaver_hint">What the TV shows when it sits idle, and after how long. The TV\'s own settings show the same choice.</string>
     <string name="screensaver_hint_system">What the TV shows when it sits idle. Opens the TV\'s screensaver settings: the launcher may not change them itself here.</string>

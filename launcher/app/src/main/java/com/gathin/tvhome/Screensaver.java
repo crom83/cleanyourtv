@@ -85,6 +85,53 @@ final class Screensaver {
         Settings.System.putInt(c.getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, minutes * 60_000);
     }
 
+    /** Seconds to the screensaver while previewing where the system can't start it on request. */
+    static final int PREVIEW_SECONDS = 5;
+    private static final String PREVIEW_PREFS = "screensaver_preview", RESTORE = "restore_ms";
+
+    /**
+     * Shows the screensaver now. Where SystemUI has its "start dreaming" screen (Somnambulator) it is asked
+     * directly; returns false when it isn't there, and the caller falls back to {@link #previewSoon}.
+     */
+    static boolean previewNow(Context c) {
+        Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_DESK_DOCK)
+                .setComponent(new ComponentName("com.android.systemui", "com.android.systemui.Somnambulator"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (c.getPackageManager().resolveActivity(i, 0) == null) return false;
+        try {
+            c.startActivity(i);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Where nothing starts the screensaver on request (Google TV): the time to it becomes {@link #PREVIEW_SECONDS}
+     * for a moment. The old value is kept and put back by {@link #restorePreview}, which the settings screen calls
+     * when it is left (the screensaver started) or after 20 s, and Home calls on every resume, in case.
+     */
+    static void previewSoon(Context c) {
+        android.content.SharedPreferences p = c.getSharedPreferences(PREVIEW_PREFS, Context.MODE_PRIVATE);
+        if (!p.contains(RESTORE)) {
+            int now = Settings.System.getInt(c.getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, 600_000);
+            p.edit().putInt(RESTORE, now).commit();
+        }
+        Settings.System.putInt(c.getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, PREVIEW_SECONDS * 1000);
+    }
+
+    /** Puts back the time to the screensaver a preview shortened; nothing when no preview is pending. */
+    static void restorePreview(Context c) {
+        android.content.SharedPreferences p = c.getSharedPreferences(PREVIEW_PREFS, Context.MODE_PRIVATE);
+        if (!p.contains(RESTORE)) return;
+        try {
+            Settings.System.putInt(c.getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, p.getInt(RESTORE, 600_000));
+            p.edit().remove(RESTORE).commit();
+        } catch (SecurityException e) {
+            // The permission was taken away: nothing to put back with, keep the value for later.
+        }
+    }
+
     /** The TV's own screensaver screen, for a launcher without the permission. */
     static boolean openSystem(Context c) {
         try {

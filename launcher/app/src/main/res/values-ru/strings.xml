@@ -122,6 +122,8 @@
     <string name="screensaver_title">Заставка</string>
     <string name="screensaver_delay_title">Заставка через</string>
     <string name="screensaver_off">Выключена</string>
+    <string name="screensaver_preview">Посмотреть</string>
+    <string name="screensaver_preview_soon">Заставка начнётся через %1$d секунд. Не трогайте пульт.</string>
     <string name="minutes_short">%1$d мин</string>
     <string name="screensaver_hint">Что показывать, когда телевизор лежит без дела, и через сколько. В настройках ТВ будет то же самое.</string>
     <string name="screensaver_hint_system">Что показывать, когда телевизор лежит без дела. Откроет настройки заставки ТВ: здесь лаунчеру не разрешено менять их самому.</string>

@@ -1174,6 +1174,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (showStats) startStats();
         if (gameDay != null) gameDay.start();
+        Screensaver.restorePreview(this);   // a screensaver preview that was never put back
         if (liveCards != null) liveCards.start();
         sky.update();
         wallpaperPlayer.start();
